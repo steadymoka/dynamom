@@ -1,0 +1,59 @@
+{
+  "name": "dynamo1",
+  "version": "0.0.0",
+  "description": "Dynamo DB one table ORM for Javascript(& Typescript).",
+  "keywords": [
+    "dynamodb",
+    "database",
+    "orm",
+    "typescript"
+  ],
+  "author": "Cris <corgidisco@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/corgidisco/dynamo1.git"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "scripts": {
+    "prepack": "npm run test && npm run build",
+    "build": "rimraf ./lib && tsc --emitDeclarationOnly && babel src --out-dir lib --extensions \".ts\" --source-maps inline",
+    "test": "npm run build && npm run test:lint && npm run test:unit",
+    "test:lint": "eslint src/**/*",
+    "test:unit": "jest test"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "testRegex": "[^/]*\\.(test|spec)\\.(j|t)sx?$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json"
+    ]
+  },
+  "dependencies": {
+    "aws-sdk": "^2.425.0",
+    "relater": "0.0.1"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.2.3",
+    "@babel/core": "^7.2.2",
+    "@babel/plugin-proposal-class-properties": "^7.2.3",
+    "@babel/plugin-proposal-object-rest-spread": "^7.2.0",
+    "@babel/preset-env": "^7.2.3",
+    "@babel/preset-typescript": "^7.1.0",
+    "@types/jest": "^24.0.0",
+    "@types/node": "^11.9.4",
+    "@typescript-eslint/eslint-plugin": "^1.4.0",
+    "eslint": "^5.14.1",
+    "jest": "^24.1.0",
+    "rimraf": "^2.6.2",
+    "ts-jest": "^23.10.5",
+    "typescript": "^3.2.2"
+  }
+}
