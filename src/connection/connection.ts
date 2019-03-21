@@ -1,6 +1,8 @@
 import { DynamoDB } from "aws-sdk"
 import { BillingMode, ProvisionedThroughput } from "aws-sdk/clients/dynamodb"
 import { ConnectionOptions } from "../interfaces/connection"
+import { fromDynamoAttributeMap } from "./from-dynamo-attribute"
+import { toDynamoAttributeMap } from "./to-dynamo-attribute"
 
 
 export class Connection {
@@ -58,5 +60,55 @@ export class Connection {
       return description
     }
     throw new Error(`table(${this.options.table}) not found.`)
+  }
+
+  public getItem(hashKey: string, rangeKey?: string): Promise<any> {
+    return new Promise((resolve, reject) => this.client.getItem({
+      TableName: this.options.table,
+      Key: rangeKey ? {
+        [this.options.hashKey]: {S: hashKey},
+        [this.options.rangeKey]: {S: rangeKey},
+      } : {
+        [this.options.hashKey]: {S: hashKey},
+      },
+    }, (err, data) => {
+      if (err) {
+        return reject(err)
+      }
+      if (data && data.Item) {
+        resolve(fromDynamoAttributeMap(data.Item))
+      }
+      resolve({})
+    }))
+  }
+
+  public writeItems(rows: {hashKey: string, rangeKey: string, item: any}[] = []) {
+    return this.client.batchWriteItem({
+      RequestItems: {
+        [this.options.table]: [
+          ...rows.map(({hashKey, rangeKey, item}) => {
+            if (typeof item[this.options.hashKey] !== "undefined") {
+              throw new Error(`duplicate with hashKey`)
+            }
+            if (typeof item[this.options.rangeKey] !== "undefined") {
+              throw new Error(`duplicate with rangeKey`)
+            }
+            return {
+              PutRequest: {
+                Item: {
+                  [this.options.hashKey]: {
+                    S: hashKey,
+                  },
+                  [this.options.rangeKey]: {
+                    S: rangeKey,
+                  },
+                  ...toDynamoAttributeMap(item),
+                },
+              }
+            }
+          }),
+        ]
+      }
+    }).promise()
   }
 }
