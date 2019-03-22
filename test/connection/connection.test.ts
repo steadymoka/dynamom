@@ -71,18 +71,18 @@ describe("testsuite of connection/connection", () => {
   })
 
 
-  it("test writeItems", async () => {
+  it("test putItems", async () => {
     const ddb = await getDynamoClient()
     const connection = new Connection(ddb, {table: "dynamo1"})
 
-    expect(() => connection.writeItems([{
+    expect(() => connection.putItems([{
       hashKey: "users",
       rangeKey: "1",
       item: {
         hashid: "hello world1",
       },
     }])).toThrowError(new Error("duplicate with hashKey"))
-    expect(() => connection.writeItems([{
+    expect(() => connection.putItems([{
       hashKey: "users",
       rangeKey: "1",
       item: {
@@ -90,7 +90,7 @@ describe("testsuite of connection/connection", () => {
       },
     }])).toThrowError(new Error("duplicate with rangeKey"))
 
-    await connection.writeItems([{
+    await connection.putItems([{
       hashKey: "users",
       rangeKey: "3",
       item: {
@@ -109,11 +109,11 @@ describe("testsuite of connection/connection", () => {
       },
     }])
 
-    await connection.writeItems([{
+    await connection.putItems([{
       hashKey: "users",
       rangeKey: "4",
       item: {
-        title: "this is test writeItems"
+        title: "this is test putItems"
       },
     }])
 
@@ -134,7 +134,7 @@ describe("testsuite of connection/connection", () => {
     expect(await connection.getItem("users", "4")).toEqual({
       hashid: "users",
       rangeid: "4",
-      title: "this is test writeItems",
+      title: "this is test putItems",
     })
 
     await connection.deleteItem("users", "1")

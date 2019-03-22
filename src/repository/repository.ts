@@ -1,4 +1,4 @@
-import { DeepPartial, Transformer } from "relater"
+import { DeepPartial, Transformer, MaybeArray } from "relater"
 import { Connection } from "../connection/connection"
 import { RepositoryOptions } from "../interfaces/repository"
 import * as uuid from "uuid/v4"
@@ -11,13 +11,13 @@ export class Repository<Entity> {
     this.transformer = new Transformer(options)
   }
 
-  public async findById(id: string): Promise<Entity | null> {
+  public async find(id: string): Promise<Entity | undefined> {
     const node = await this.connection.getItem(this.options.name, id)
     if (node) {
       node[this.options.id.sourceKey] = id
       return this.transformer.toEntity(node)
     }
-    return null
+    return
   }
 
   public async create(entity: DeepPartial<Entity>): Promise<Entity> {
@@ -32,10 +32,10 @@ export class Repository<Entity> {
     if (!id) {
       throw new Error("id not defined!")
     }
-    await this.connection.writeItems([
+    await this.connection.putItems([
       {
         hashKey: this.options.name,
-        rangeKey: node[this.options.id.property],
+        rangeKey: id,
         item: this.transformer.toPlain(entity),
       },
       // {
@@ -45,5 +45,25 @@ export class Repository<Entity> {
       // },
     ])
     return node
+  }
+
+  public async persist(entity: Entity): Promise<Entity> {
+    const id = (entity as any)[this.options.id.property]
+    if (!id) {
+      throw new Error("id not defined!")
+    }
+    await this.connection.putItems([
+      {
+        hashKey: this.options.name,
+        rangeKey: id,
+        item: this.transformer.toPlain(entity),
+      },
+      // {
+      //   hashKey: this.options.name + "_indexname",
+      //   rangeKey: index,
+      //   item: {sourceid: id},
+      // },
+    ])
+    return entity
   }
 }

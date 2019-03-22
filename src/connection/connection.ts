@@ -102,7 +102,7 @@ export class Connection {
       } : {
         [this.options.hashKey]: {S: hashKey},
       },
-    }, (err, data) => {
+    }, (err) => {
       if (err) {
         return reject(err)
       }
@@ -110,7 +110,7 @@ export class Connection {
     }))
   }
 
-  public writeItems(rows: {hashKey: string, rangeKey: string, item: any}[] = []) {
+  public putItems(rows: {hashKey: string, rangeKey: string, item: any}[] = []) {
     return this.client.batchWriteItem({
       RequestItems: {
         [this.options.table]: [

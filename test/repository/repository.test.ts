@@ -7,7 +7,7 @@ import { User } from "../stubs/user"
 const table = "dynamo1_service" 
 
 describe("testsuite of repository/repository", () => {
-  it("test create and findById", async () => {
+  it("test create and find", async () => {
     const ddb = await getDynamoClient()
     const connection = new Connection(ddb, {table})
 
@@ -31,7 +31,9 @@ describe("testsuite of repository/repository", () => {
     })
     expect(user).toBeInstanceOf(User)
 
-    const foundUser = await repository.findById(user.id)
+    const foundUser = await repository.find(user.id)
+
+    expect(user).toEqual(foundUser)
     expect(foundUser).toEqual({
       id: user.id, // :-)
       username: "corgidisco",
@@ -40,6 +42,38 @@ describe("testsuite of repository/repository", () => {
     })
     expect(foundUser).toBeInstanceOf(User)
 
+
+    await ddb.deleteItem({
+      TableName: "dynamo1_service",
+      Key: {hashid: {S: "user"}, rangeid: {S: user.id}},
+    }).promise()
+  })
+
+  it("test persist(update)", async () => {
+    const ddb = await getDynamoClient()
+    const connection = new Connection(ddb, {table})
+
+    await connection.initialize({
+      BillingMode: "PAY_PER_REQUEST",
+    })
+
+    const repository = new Repository(connection, createOptions(User))
+    const createdAt = new Date().getTime()
+
+    const user = await repository.create({
+      username: "corgidisco",
+      email: "corgidisco@gmail.com",
+      createdAt,
+    })
+
+    user.email = "corgidisco+updated@gmail.com"
+
+    await repository.persist(user)
+
+    const foundUser = (await repository.find(user.id))!
+
+    expect(foundUser.email).toEqual("corgidisco+updated@gmail.com")
+    expect(user).toEqual(foundUser)
 
     await ddb.deleteItem({
       TableName: "dynamo1_service",
