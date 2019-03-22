@@ -9,9 +9,9 @@ import {
 @Entity({name: "user"})
 export class User {
 
-  @Id() @GeneratedValue()
+  @Id() @GeneratedValue({strategy: "uuid"})
   @Column({name: "user_id"})
-  public id?: string
+  public id!: string
 
   @Column()
   public username!: string
