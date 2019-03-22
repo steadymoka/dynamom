@@ -1,14 +1,10 @@
-import { DynamoDB } from "aws-sdk"
-import { getDockerComposePort } from "../helper"
+import { getDynamoClient } from "../helper"
 import { Connection } from "../../src/connection/connection"
+
 
 describe("testsuite of connection/connection", () => {
   it("test initialize and doctor", async () => {
-    
-    const ddb = new DynamoDB({
-      endpoint: `http://localhost:${await getDockerComposePort("dynamodb", 8000)}`,
-      region: "ap-northeast-2",
-    })
+    const ddb = await getDynamoClient()
     const connection = new Connection(ddb, {
       table: "dynamo1",
       hashKey: "hashid",
@@ -22,16 +18,62 @@ describe("testsuite of connection/connection", () => {
   })
 
 
-  it("test getItem and writeItems", async () => {
-    const ddb = new DynamoDB({
-      endpoint: `http://localhost:${await getDockerComposePort("dynamodb", 8000)}`,
-      region: "ap-northeast-2",
+  it("test getItem", async () => {
+    const ddb = await getDynamoClient()
+    const connection = new Connection(ddb, {table: "dynamo1"})
+
+    expect(await connection.getItem("test-connection", "1")).toEqual(null)
+
+    await ddb.putItem({
+      TableName: "dynamo1",
+      Item: {
+        hashid: {S: "test-connection"},
+        rangeid: {S: "1"},
+        othervalue: {S: "this is test getItem"},
+      },
+    }).promise()
+
+    expect(await connection.getItem("test-connection", "1")).toEqual({
+      hashid: "test-connection",
+      rangeid: "1",
+      othervalue: "this is test getItem",
     })
-    const connection = new Connection(ddb, {
-      table: "dynamo1",
-      hashKey: "hashid",
-      rangeKey: "rangeid",
+
+    await ddb.deleteItem({
+      TableName: "dynamo1",
+      Key: {hashid: {S: "test-connection"}, rangeid: {S: "1"}},
+    }).promise()
+  })
+
+
+  it("test deleteItem", async () => {
+    const ddb = await getDynamoClient()
+    const connection = new Connection(ddb, {table: "dynamo1"})
+
+    await ddb.putItem({
+      TableName: "dynamo1",
+      Item: {
+        hashid: {S: "test-connection"},
+        rangeid: {S: "2"},
+        othervalue: {S: "this is test deleteItem"},
+      },
+    }).promise()
+    
+    expect(await connection.getItem("test-connection", "2")).toEqual({
+      hashid: "test-connection",
+      rangeid: "2",
+      othervalue: "this is test deleteItem",
     })
+
+    await connection.deleteItem("test-connection", "2")
+
+    expect(await connection.getItem("test-connection", "2")).toEqual(null)
+  })
+
+
+  it("test writeItems", async () => {
+    const ddb = await getDynamoClient()
+    const connection = new Connection(ddb, {table: "dynamo1"})
 
     expect(() => connection.writeItems([{
       hashKey: "users",
@@ -50,8 +92,10 @@ describe("testsuite of connection/connection", () => {
 
     await connection.writeItems([{
       hashKey: "users",
-      rangeKey: "1",
+      rangeKey: "3",
       item: {
+        hashid: "users",
+        rangeid: "3",
         value_empty_string: "",
         value_null: null,
         value_number: 30.333,
@@ -65,9 +109,17 @@ describe("testsuite of connection/connection", () => {
       },
     }])
 
-    expect(await connection.getItem("users", "1")).toEqual({
+    await connection.writeItems([{
+      hashKey: "users",
+      rangeKey: "4",
+      item: {
+        title: "this is test writeItems"
+      },
+    }])
+
+    expect(await connection.getItem("users", "3")).toEqual({
       hashid: "users",
-      rangeid: "1",
+      rangeid: "3",
       value_empty_string: null,
       value_null: null,
       value_number: 30.333,
@@ -79,10 +131,12 @@ describe("testsuite of connection/connection", () => {
         foo: "foo string"
       },
     })
+    expect(await connection.getItem("users", "4")).toEqual({
+      hashid: "users",
+      rangeid: "4",
+      title: "this is test writeItems",
+    })
 
-    await ddb.deleteItem({
-      TableName: "dynamo1",
-      Key: {hashid: {S: "users"}, rangeid: {S: "1"}},
-    }).promise()
+    await connection.deleteItem("users", "1")
   })
 })

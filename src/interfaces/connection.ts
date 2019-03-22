@@ -1,6 +1,6 @@
 
 export interface ConnectionOptions {
   table: string
-  hashKey: string
-  rangeKey: string
+  hashKey?: string
+  rangeKey?: string
 }

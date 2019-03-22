@@ -1,4 +1,13 @@
+import { DynamoDB } from "aws-sdk"
 import { exec } from "child_process"
+
+
+export async function getDynamoClient() {
+  return new DynamoDB({
+    endpoint: `http://localhost:${await getDockerComposePort("dynamodb", 8000)}`,
+    region: "ap-northeast-2",
+  })
+}
 
 export function getDockerComposePort(service: string, port: number): Promise<number> {
   return new Promise((resolve, reject) => {

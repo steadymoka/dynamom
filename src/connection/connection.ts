@@ -7,7 +7,18 @@ import { toDynamoAttributeMap } from "./to-dynamo-attribute"
 
 export class Connection {
   
-  public constructor(public client: DynamoDB, public options: ConnectionOptions) {
+  public options: {
+    table: string
+    hashKey: string
+    rangeKey: string
+  }
+
+  public constructor(public client: DynamoDB, options: ConnectionOptions) {
+    this.options = {
+      table: options.table,
+      hashKey: options.hashKey || "hashid",
+      rangeKey: options.rangeKey || "rangeid",
+    }
   }
 
   public async initialize(mode: {BillingMode?: BillingMode, ProvisionedThroughput?: ProvisionedThroughput}) {
@@ -62,7 +73,7 @@ export class Connection {
     throw new Error(`table(${this.options.table}) not found.`)
   }
 
-  public getItem(hashKey: string, rangeKey?: string): Promise<any> {
+  public getItem(hashKey: string, rangeKey?: string): Promise<any | null> {
     return new Promise((resolve, reject) => this.client.getItem({
       TableName: this.options.table,
       Key: rangeKey ? {
@@ -78,7 +89,24 @@ export class Connection {
       if (data && data.Item) {
         resolve(fromDynamoAttributeMap(data.Item))
       }
-      resolve({})
+      resolve(null)
+    }))
+  }
+
+  public deleteItem(hashKey: string, rangeKey?: string): Promise<void> {
+    return new Promise((resolve, reject) => this.client.deleteItem({
+      TableName: this.options.table,
+      Key: rangeKey ? {
+        [this.options.hashKey]: {S: hashKey},
+        [this.options.rangeKey]: {S: rangeKey},
+      } : {
+        [this.options.hashKey]: {S: hashKey},
+      },
+    }, (err, data) => {
+      if (err) {
+        return reject(err)
+      }
+      resolve()
     }))
   }
 
@@ -87,10 +115,10 @@ export class Connection {
       RequestItems: {
         [this.options.table]: [
           ...rows.map(({hashKey, rangeKey, item}) => {
-            if (typeof item[this.options.hashKey] !== "undefined") {
+            if (typeof item[this.options.hashKey] !== "undefined" && item[this.options.hashKey] !== hashKey) {
               throw new Error(`duplicate with hashKey`)
             }
-            if (typeof item[this.options.rangeKey] !== "undefined") {
+            if (typeof item[this.options.rangeKey] !== "undefined" && item[this.options.rangeKey] !== rangeKey) {
               throw new Error(`duplicate with rangeKey`)
             }
             return {
