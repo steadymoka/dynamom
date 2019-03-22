@@ -38,7 +38,8 @@
   },
   "dependencies": {
     "aws-sdk": "^2.425.0",
-    "relater": "0.0.1"
+    "relater": "^0.1.0",
+    "uuid": "^3.3.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.2.3",
@@ -49,6 +50,7 @@
     "@babel/preset-typescript": "^7.1.0",
     "@types/jest": "^24.0.0",
     "@types/node": "^11.9.4",
+    "@types/uuid": "^3.4.4",
     "@typescript-eslint/eslint-plugin": "^1.4.0",
     "eslint": "^5.14.1",
     "jest": "^24.1.0",
