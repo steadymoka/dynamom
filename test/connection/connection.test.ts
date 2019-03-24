@@ -1,30 +1,26 @@
-import { getDynamoClient } from "../helper"
+import { getDynamoClient, getSafeConnection } from "../helper"
 import { Connection } from "../../src/connection/connection"
 
 
 describe("testsuite of connection/connection", () => {
   it("test initialize and doctor", async () => {
     const ddb = await getDynamoClient()
-    const connection = new Connection(ddb, {
-      table: "dynamo1",
-      hashKey: "hashid",
-      rangeKey: "rangeid",
-    })
+    const connection = new Connection(ddb, {table: "dynamo1"})
 
     await connection.initialize({
       BillingMode: "PAY_PER_REQUEST",
     })
+
     await connection.doctor()
   })
 
 
   it("test getItem", async () => {
-    const ddb = await getDynamoClient()
-    const connection = new Connection(ddb, {table: "dynamo1"})
+    const connection = await getSafeConnection("dynamo1")
 
     expect(await connection.getItem("test-connection", "1")).toEqual(null)
 
-    await ddb.putItem({
+    await connection.client.putItem({
       TableName: "dynamo1",
       Item: {
         hashid: {S: "test-connection"},
@@ -39,18 +35,44 @@ describe("testsuite of connection/connection", () => {
       othervalue: "this is test getItem",
     })
 
-    await ddb.deleteItem({
+    await connection.client.deleteItem({
       TableName: "dynamo1",
       Key: {hashid: {S: "test-connection"}, rangeid: {S: "1"}},
     }).promise()
   })
 
 
-  it("test deleteItem", async () => {
-    const ddb = await getDynamoClient()
-    const connection = new Connection(ddb, {table: "dynamo1"})
+  it("test count", async () => {
+    const connection = await getSafeConnection("dynamo1")
 
-    await ddb.putItem({
+    expect(await connection.count("test-connection")).toEqual(0)
+
+    for (let i = 0; i < 10; i++) {
+      await connection.client.putItem({
+        TableName: "dynamo1",
+        Item: {
+          hashid: {S: "test-connection"},
+          rangeid: {S: (i + 1) + ""},
+          othervalue: {S: "this is test getItem"},
+        },
+      }).promise()
+    }
+
+    expect(await connection.count("test-connection")).toEqual(10)
+
+    for (let i = 0; i < 10; i++) {
+      await connection.client.deleteItem({
+        TableName: "dynamo1",
+        Key: {hashid: {S: "test-connection"}, rangeid: {S: (i + 1) + ""}},
+      }).promise()
+    }
+  })
+
+
+  it("test deleteItem", async () => {
+    const connection = await getSafeConnection("dynamo1")
+
+    await connection.client.putItem({
       TableName: "dynamo1",
       Item: {
         hashid: {S: "test-connection"},
@@ -72,8 +94,7 @@ describe("testsuite of connection/connection", () => {
 
 
   it("test putItems", async () => {
-    const ddb = await getDynamoClient()
-    const connection = new Connection(ddb, {table: "dynamo1"})
+    const connection = await getSafeConnection("dynamo1")
 
     expect(() => connection.putItems([{
       hashKey: "users",

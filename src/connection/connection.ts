@@ -93,6 +93,27 @@ export class Connection {
     }))
   }
 
+  public count(hashKey: string): Promise<number> {
+    return new Promise((resolve, reject) => {
+      this.client.query({
+        TableName: this.options.table,
+        Select: "COUNT",
+        KeyConditionExpression: `#hashkey = :hashkey`,
+        ExpressionAttributeNames: {
+          "#hashkey": this.options.hashKey,
+        },
+        ExpressionAttributeValues: {
+          ":hashkey": {S: hashKey},
+        },
+      }, (err, result) => {
+        if (err) {
+          return reject(err)
+        }
+        resolve(result.Count || 0)
+      })
+    })
+  }
+
   public deleteItem(hashKey: string, rangeKey?: string): Promise<void> {
     return new Promise((resolve, reject) => this.client.deleteItem({
       TableName: this.options.table,

@@ -1,6 +1,15 @@
 import { DynamoDB } from "aws-sdk"
 import { exec } from "child_process"
+import { Connection } from "../src/connection/connection"
 
+export async function getSafeConnection(table: string) {
+  const ddb = await getDynamoClient()
+  const connection = new Connection(ddb, {table})
+  await connection.initialize({
+    BillingMode: "PAY_PER_REQUEST",
+  })
+  return connection
+}
 
 export async function getDynamoClient() {
   return new DynamoDB({
