@@ -4,3 +4,24 @@ export interface ConnectionOptions {
   hashKey?: string
   rangeKey?: string
 }
+
+export interface QueryOptions {
+  limit?: number
+  // offset?: number
+  after?: DynamoCursor
+}
+
+export interface QueryResult<P> {
+  nodes: DynamoNode<P>[]
+  endCursor?: DynamoCursor
+}
+
+export interface DynamoNode<P> {
+  cursor: DynamoCursor
+  node: P
+}
+
+export interface DynamoCursor {
+  hashKey: string
+  rangeKey: string
+}

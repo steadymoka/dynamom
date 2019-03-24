@@ -1,6 +1,11 @@
 import { DynamoDB } from "aws-sdk"
 import { BillingMode, ProvisionedThroughput } from "aws-sdk/clients/dynamodb"
-import { ConnectionOptions } from "../interfaces/connection"
+import {
+  ConnectionOptions,
+  DynamoNode,
+  QueryOptions,
+  QueryResult
+} from "../interfaces/connection"
 import { fromDynamoAttributeMap } from "./from-dynamo-attribute"
 import { toDynamoAttributeMap } from "./to-dynamo-attribute"
 
@@ -73,6 +78,52 @@ export class Connection {
     throw new Error(`table(${this.options.table}) not found.`)
   }
 
+  public query<P = any>(hashKey: string, {limit = 20, after}: QueryOptions = {}): Promise<QueryResult<P>> {
+    return new Promise((resolve, reject) => this.client.query({
+      TableName: this.options.table,
+      Limit: limit,
+      KeyConditionExpression: `#hashkey = :hashkey`,
+      ExpressionAttributeNames: {
+        "#hashkey": this.options.hashKey,
+      },
+      ExpressionAttributeValues: {
+        ":hashkey": {S: hashKey},
+      },
+      ExclusiveStartKey: after ? {
+        [this.options.hashKey]: {S: after.hashKey},
+        [this.options.rangeKey]: {S: after.rangeKey},
+      } : undefined,
+    }, (err, result) => {
+      if (err) {
+        return reject(err)
+      }
+      const nodes: DynamoNode<P>[] = (result.Items || []).map((item) => {
+        const node = fromDynamoAttributeMap(item) as P
+        return {
+          cursor: {
+            hashKey: item[this.options.hashKey].S as string,
+            rangeKey: item[this.options.rangeKey].S as string,
+          },
+          node,
+        }
+      })
+
+      if (result.LastEvaluatedKey) {
+        const lastCursor = fromDynamoAttributeMap(result.LastEvaluatedKey)
+        return resolve({
+          nodes,
+          endCursor: {
+            hashKey: lastCursor[this.options.hashKey] as string,
+            rangeKey: lastCursor[this.options.rangeKey] as string,
+          },
+        })
+      }
+      resolve({
+        nodes,
+      })
+    }))
+  }
+
   public getItem(hashKey: string, rangeKey?: string): Promise<any | null> {
     return new Promise((resolve, reject) => this.client.getItem({
       TableName: this.options.table,
@@ -131,15 +182,17 @@ export class Connection {
     }))
   }
 
-  public putItems(rows: {hashKey: string, rangeKey: string, item: any}[] = []) {
+  public putItems<P = any>(rows: DynamoNode<P>[] = []) {
     return this.client.batchWriteItem({
       RequestItems: {
         [this.options.table]: [
-          ...rows.map(({hashKey, rangeKey, item}) => {
-            if (typeof item[this.options.hashKey] !== "undefined" && item[this.options.hashKey] !== hashKey) {
+          ...rows.map(({cursor: {hashKey, rangeKey}, node}) => {
+            if (typeof (node as any)[this.options.hashKey] !== "undefined"
+              && (node as any)[this.options.hashKey] !== hashKey) {
               throw new Error(`duplicate with hashKey`)
             }
-            if (typeof item[this.options.rangeKey] !== "undefined" && item[this.options.rangeKey] !== rangeKey) {
+            if (typeof (node as any)[this.options.rangeKey] !== "undefined"
+              && (node as any)[this.options.rangeKey] !== rangeKey) {
               throw new Error(`duplicate with rangeKey`)
             }
             return {
@@ -151,7 +204,7 @@ export class Connection {
                   [this.options.rangeKey]: {
                     S: rangeKey,
                   },
-                  ...toDynamoAttributeMap(item),
+                  ...toDynamoAttributeMap(node),
                 },
               }
             }

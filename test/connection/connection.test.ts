@@ -1,5 +1,5 @@
-import { getDynamoClient, getSafeConnection } from "../helper"
 import { Connection } from "../../src/connection/connection"
+import { getDynamoClient, getSafeConnection } from "../helper"
 
 
 describe("testsuite of connection/connection", () => {
@@ -52,7 +52,7 @@ describe("testsuite of connection/connection", () => {
         TableName: "dynamo1",
         Item: {
           hashid: {S: "test-connection"},
-          rangeid: {S: (i + 1) + ""},
+          rangeid: {S: `${i}`},
           othervalue: {S: "this is test getItem"},
         },
       }).promise()
@@ -63,7 +63,122 @@ describe("testsuite of connection/connection", () => {
     for (let i = 0; i < 10; i++) {
       await connection.client.deleteItem({
         TableName: "dynamo1",
-        Key: {hashid: {S: "test-connection"}, rangeid: {S: (i + 1) + ""}},
+        Key: {hashid: {S: "test-connection"}, rangeid: {S: `${i}`}},
+      }).promise()
+    }
+  })
+
+
+  it("test query", async () => {
+    const connection = await getSafeConnection("dynamo1")
+
+    for (let i = 0; i < 10; i++) {
+      await connection.client.putItem({
+        TableName: "dynamo1",
+        Item: {
+          hashid: {S: "test-connection"},
+          rangeid: {S: `${i}`},
+          othervalue: {S: "this is test getItem"},
+        },
+      }).promise()
+    }
+
+    const result1 = await connection.query("test-connection", {limit: 5})
+    expect(result1).toEqual({
+      nodes: [
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "0"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "0",
+            othervalue: "this is test getItem"
+          }
+        },
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "1"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "1",
+            othervalue: "this is test getItem"
+          }
+        },
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "2"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "2",
+            othervalue: "this is test getItem"
+          }
+        },
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "3"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "3",
+            othervalue: "this is test getItem"
+          }
+        },
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "4"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "4",
+            othervalue: "this is test getItem"
+          }
+        }
+      ],
+      endCursor: {hashKey: "test-connection", rangeKey: "4"},
+    })
+    const result2 = await connection.query("test-connection", {after: result1.endCursor})
+    expect(result2).toEqual({
+      nodes: [
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "5"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "5",
+            othervalue: "this is test getItem"
+          }
+        },
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "6"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "6",
+            othervalue: "this is test getItem"
+          }
+        },
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "7"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "7",
+            othervalue: "this is test getItem"
+          }
+        },
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "8"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "8",
+            othervalue: "this is test getItem"
+          }
+        },
+        {
+          cursor: {hashKey: "test-connection", rangeKey: "9"},
+          node: {
+            hashid: "test-connection",
+            rangeid: "9",
+            othervalue: "this is test getItem"
+          }
+        }
+      ],
+    })
+
+    for (let i = 0; i < 10; i++) {
+      await connection.client.deleteItem({
+        TableName: "dynamo1",
+        Key: {hashid: {S: "test-connection"}, rangeid: {S: `${i}`}},
       }).promise()
     }
   })
@@ -97,24 +212,30 @@ describe("testsuite of connection/connection", () => {
     const connection = await getSafeConnection("dynamo1")
 
     expect(() => connection.putItems([{
-      hashKey: "users",
-      rangeKey: "1",
-      item: {
+      cursor: {
+        hashKey: "users",
+        rangeKey: "1",
+      },
+      node: {
         hashid: "hello world1",
       },
     }])).toThrowError(new Error("duplicate with hashKey"))
     expect(() => connection.putItems([{
-      hashKey: "users",
-      rangeKey: "1",
-      item: {
+      cursor: {
+        hashKey: "users",
+        rangeKey: "1",
+      },
+      node: {
         rangeid: "hello world1",
       },
     }])).toThrowError(new Error("duplicate with rangeKey"))
 
     await connection.putItems([{
-      hashKey: "users",
-      rangeKey: "3",
-      item: {
+      cursor: {
+        hashKey: "users",
+        rangeKey: "3",
+      },
+      node: {
         hashid: "users",
         rangeid: "3",
         value_empty_string: "",
@@ -131,9 +252,11 @@ describe("testsuite of connection/connection", () => {
     }])
 
     await connection.putItems([{
-      hashKey: "users",
-      rangeKey: "4",
-      item: {
+      cursor: {
+        hashKey: "users",
+        rangeKey: "4",
+      },
+      node: {
         title: "this is test putItems"
       },
     }])
