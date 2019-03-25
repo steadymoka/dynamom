@@ -1,4 +1,4 @@
-import { MaybeArray } from "relater"
+import { Indexer } from "./common"
 
 
 export interface EntityDecoratorOptions {
@@ -15,5 +15,4 @@ export type IdDecoratorFactory = () => PropertyDecorator
 
 export type GeneratedValueDecoratorFactory = (options?: GeneratedValueDecoratorOptions) => PropertyDecorator
 
-export type IndexDecoratorFactory = <P = any>(name: string, indexer: (self: P) => string) => ClassDecorator
-export type ColumnIndexDecoratorFactory = <P = any>(name: string, columns: MaybeArray<keyof P>) => ClassDecorator
+export type IndexDecoratorFactory = <P = any>(name: string, indexer: Indexer<P>) => ClassDecorator

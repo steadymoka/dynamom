@@ -79,7 +79,7 @@ export class Connection {
     throw new Error(`table(${this.options.table}) not found.`)
   }
 
-  public query<P = any>(hashKey: string, {limit = 20, after}: QueryOptions = {}): Promise<QueryResult<P>> {
+  public query<P = any>(hashKey: string, {limit = 20, after, desc = false}: QueryOptions = {}): Promise<QueryResult<P>> {
     return new Promise((resolve, reject) => this.client.query({
       TableName: this.options.table,
       Limit: limit,
@@ -94,6 +94,7 @@ export class Connection {
         [this.options.hashKey]: {S: after.hashKey},
         [this.options.rangeKey]: {S: after.rangeKey},
       } : undefined,
+      ScanIndexForward: !desc,
     }, (err, result) => {
       if (err) {
         return reject(err)

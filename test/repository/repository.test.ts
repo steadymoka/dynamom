@@ -122,10 +122,40 @@ describe("testsuite of repository/repository", () => {
       })),
       endCursor: encodeBase64({hashKey: "user", rangeKey: sortedUsers[4].id}),
     })
-
     expect(result2).toEqual({
       nodes: sortedUsers.slice(5).map(user => ({
         cursor: encodeBase64({hashKey: "user", rangeKey: user.id}),
+        node: user,
+      })),
+    })
+  })
+
+
+  it("test retrieve by index", async () => {
+    const connection = await getSafeConnection(TableName)
+    const repository = new Repository(connection, createOptions(User))
+    const users = await Promise.all(range(0, 10).map(() => repository.create(createFakeUser())))
+
+    // console.log("rawdata", users)
+
+    const result1 = await repository.retrieve({limit: 5, index: "created", desc: true})
+    const result2 = await repository.retrieve({after: result1.endCursor, index: "created", desc: true})
+
+    // all delete
+    await Promise.all(users.map(user => repository.remove(user)))
+
+    const sortedUsers = users.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
+
+    expect(result1).toEqual({
+      nodes: sortedUsers.slice(0, 5).map(user => ({
+        cursor: encodeBase64({hashKey: "user__created", rangeKey: user.createdAt + ""}),
+        node: user,
+      })),
+      endCursor: encodeBase64({hashKey: "user__created", rangeKey: sortedUsers[4].createdAt + ""}),
+    })
+    expect(result2).toEqual({
+      nodes: sortedUsers.slice(5).map(user => ({
+        cursor: encodeBase64({hashKey: "user__created", rangeKey: user.createdAt + ""}),
         node: user,
       })),
     })

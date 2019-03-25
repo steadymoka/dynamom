@@ -1,8 +1,8 @@
-import { Column, ColumnIndex, Entity, GeneratedValue, Id } from "../../src"
+import { Column, Index, Entity, GeneratedValue, Id, columnBy } from "../../src"
 
 
 @Entity({name: "user"})
-@ColumnIndex<User>("created", ["createdAt"])
+@Index<User>("created", columnBy(["createdAt"]))
 export class User {
 
   @Id() @GeneratedValue({strategy: "uuid"})

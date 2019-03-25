@@ -21,35 +21,58 @@ export class Repository<Entity> {
     this.transformer = new Transformer(options)
   }
 
-  public async retrieve({limit = 20, after}: RetrieveOptions = {}, byIndex?: string): Promise<RetrieveResult<Entity>> {
-    const result = await this.connection.query(this.options.name, {
-      limit,
-      after: after ? decodeBase64(after) : undefined,
-    })
-    const nodes = result.nodes.map(({node, cursor}) => {
-      node[this.options.id.sourceKey] = cursor.rangeKey
-      return {
-        node: this.transformer.toEntity(node),
-        cursor: encodeBase64(cursor),
-      }
-    })
-    if (result.endCursor) {
+  public async retrieve({limit = 20, after, index, desc = false}: RetrieveOptions = {}): Promise<RetrieveResult<Entity>> {
+    let endCursor: DynamoCursor | undefined
+    const nodes: {cursor: string, node: Entity}[] = []
+    if (index) {
+      const indexes = await this.connection.query(`${this.options.name}__${index}`, {
+        limit,
+        after: after ? decodeBase64(after) : undefined,
+        desc,
+      })
+      const result = await this.connection.getManyItems(indexes.nodes.map(({node}) => ({
+        hashKey: node.sourcetype,
+        rangeKey: node.sourceid,
+      })))
+      endCursor = indexes.endCursor
+      indexes.nodes.forEach(({node, cursor}) => {
+        const foundNode = result.find((result) => {
+          return result[this.connection.options.hashKey] === node.sourcetype
+            && result[this.connection.options.rangeKey] === node.sourceid + "" 
+        })
+        if (foundNode) {
+          foundNode[this.options.id.sourceKey] = foundNode[this.connection.options.rangeKey]
+          nodes.push({
+            node: this.transformer.toEntity(foundNode),
+            cursor: encodeBase64(cursor),
+          })
+        }
+      })
+    } else {
+      const result = await this.connection.query(this.options.name, {
+        limit,
+        after: after ? decodeBase64(after) : undefined,
+        desc,
+      })
+      endCursor = result.endCursor
+      result.nodes.forEach(({node, cursor}) => {
+        node[this.options.id.sourceKey] = node[this.connection.options.rangeKey]
+        nodes.push({
+          node: this.transformer.toEntity(node),
+          cursor: encodeBase64(cursor),
+        })
+      })
+    }
+
+    if (endCursor) {
       return {
         nodes,
-        endCursor: encodeBase64(result.endCursor),
+        endCursor: encodeBase64(endCursor),
       }  
     }
     return {
       nodes,
     }
-  
-    // const result2 = await this.client.batchGet({
-    //   RequestItems: {
-    //     [TableName]: {
-    //       Keys: (result.Items || []).map((item) => ({id: item.targetid, range: "space"})),
-    //     },
-    //   },
-    // }).promise()
   }
 
   public async find(id: string): Promise<Entity | undefined> {

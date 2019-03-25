@@ -9,6 +9,7 @@ export interface QueryOptions {
   limit?: number
   // offset?: number
   after?: DynamoCursor
+  desc?: boolean
 }
 
 export interface QueryResult<P> {

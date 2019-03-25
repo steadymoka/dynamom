@@ -20,6 +20,8 @@ export interface RetrieveOptions {
   limit?: number
   // offset?: number
   after?: string
+  index?: string
+  desc?: boolean
 }
 
 export interface RetrieveResult<P> {
