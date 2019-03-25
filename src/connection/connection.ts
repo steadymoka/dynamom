@@ -1,10 +1,11 @@
 import { DynamoDB } from "aws-sdk"
-import { BillingMode, ProvisionedThroughput } from "aws-sdk/clients/dynamodb"
+import { BillingMode, ProvisionedThroughput, WriteRequest } from "aws-sdk/clients/dynamodb"
 import {
   ConnectionOptions,
   DynamoNode,
   QueryOptions,
-  QueryResult
+  QueryResult,
+  DynamoCursor
 } from "../interfaces/connection"
 import { fromDynamoAttributeMap } from "./from-dynamo-attribute"
 import { toDynamoAttributeMap } from "./to-dynamo-attribute"
@@ -144,6 +145,27 @@ export class Connection {
     }))
   }
 
+  public getManyItems(cursors: DynamoCursor[]): Promise<any[]> {
+    return new Promise((resolve, reject) => this.client.batchGetItem({
+      RequestItems: {
+        [this.options.table]: {
+          Keys: cursors.map((cursor) => ({
+            [this.options.hashKey]: {S: cursor.hashKey},
+            [this.options.rangeKey]: {S: cursor.rangeKey},
+          })),
+        },
+      }
+    }, (err, result) => {
+      if (err) {
+        return reject(err)
+      }
+      if (result && result.Responses && result.Responses[this.options.table]) {
+        return resolve(result.Responses[this.options.table].map(fromDynamoAttributeMap))
+      }
+      resolve([])
+    }))
+  }
+
   public count(hashKey: string): Promise<number> {
     return new Promise((resolve, reject) => {
       this.client.query({
@@ -165,7 +187,7 @@ export class Connection {
     })
   }
 
-  public deleteItem(hashKey: string, rangeKey?: string): Promise<void> {
+  public deleteItem(hashKey: string, rangeKey?: string): Promise<boolean> {
     return new Promise((resolve, reject) => this.client.deleteItem({
       TableName: this.options.table,
       Key: rangeKey ? {
@@ -178,7 +200,45 @@ export class Connection {
       if (err) {
         return reject(err)
       }
-      resolve()
+      resolve(true)
+    }))
+  }
+
+  public deleteManyItems(cursors: DynamoCursor[]): Promise<boolean[]> {
+    return new Promise(((resolve, reject) => {
+      this.client.batchWriteItem({
+        RequestItems: {
+          [this.options.table]: cursors.map(({hashKey, rangeKey}): WriteRequest => {
+            return {
+              DeleteRequest: {
+                Key: {
+                  [this.options.hashKey]: {
+                    S: hashKey,
+                  },
+                  [this.options.rangeKey]: {
+                    S: rangeKey,
+                  },
+                },
+              }
+            }
+          }),
+        },
+      }, (err, result) => {
+        if (err) {
+          return reject(err)
+        }
+        if (result.UnprocessedItems && result.UnprocessedItems[this.options.table]) {
+          const failKeys = result.UnprocessedItems[this.options.table]
+            .filter(({DeleteRequest}) => DeleteRequest)
+            .map(({DeleteRequest}) => DeleteRequest!.Key)
+          resolve(cursors.map((cursor) => {
+            const foundFailKey = failKeys.find((failKey) => failKey[this.options.hashKey].S === cursor.hashKey
+              && failKey[this.options.rangeKey].S === cursor.rangeKey)
+            return foundFailKey ? true : false
+          }))
+        }
+        resolve(cursors.map(() => true))
+      })
     }))
   }
 
@@ -186,7 +246,7 @@ export class Connection {
     return this.client.batchWriteItem({
       RequestItems: {
         [this.options.table]: [
-          ...rows.map(({cursor: {hashKey, rangeKey}, node}) => {
+          ...rows.map(({cursor: {hashKey, rangeKey}, node}): WriteRequest => {
             if (typeof (node as any)[this.options.hashKey] !== "undefined"
               && (node as any)[this.options.hashKey] !== hashKey) {
               throw new Error(`duplicate with hashKey`)

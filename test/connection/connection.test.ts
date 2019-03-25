@@ -202,7 +202,7 @@ describe("testsuite of connection/connection", () => {
       othervalue: "this is test deleteItem",
     })
 
-    await connection.deleteItem("test-connection", "2")
+    expect(await connection.deleteItem("test-connection", "2")).toBeTruthy()
 
     expect(await connection.getItem("test-connection", "2")).toEqual(null)
   })
@@ -282,5 +282,60 @@ describe("testsuite of connection/connection", () => {
     })
 
     await connection.deleteItem("users", "1")
+  })
+
+  it("test getManyItems", async () => {
+    const connection = await getSafeConnection("dynamo1")
+
+    expect(await connection.getManyItems([
+      {hashKey: "test-connection", rangeKey: "1"},
+      {hashKey: "test-connection", rangeKey: "2"},
+      {hashKey: "test-connection", rangeKey: "3"},
+    ])).toEqual([])
+
+    await connection.putItems([
+      {cursor: {hashKey: "test-connection", rangeKey: "1"}, node: {title: "item 1"}},
+      {cursor: {hashKey: "test-connection", rangeKey: "2"}, node: {title: "item 2"}},
+      {cursor: {hashKey: "test-connection", rangeKey: "3"}, node: {title: "item 3"}},
+    ])
+
+    const result = await connection.getManyItems([
+      {hashKey: "test-connection", rangeKey: "1"},
+      {hashKey: "test-connection", rangeKey: "2"},
+      {hashKey: "test-connection", rangeKey: "3"},
+    ])
+    expect(result.sort((a, b) => a.rangeid > b.rangeid ? 1 : -1)).toEqual([
+      {hashid: "test-connection", rangeid: "1", title: "item 1"},
+      {hashid: "test-connection", rangeid: "2", title: "item 2"},
+      {hashid: "test-connection", rangeid: "3", title: "item 3"},
+    ])
+
+    await Promise.all([
+      connection.deleteItem("test-connection", "1"),
+      connection.deleteItem("test-connection", "2"),
+      connection.deleteItem("test-connection", "3"),
+    ])
+  })
+
+  it("test deleteManyItems", async () => {
+    const connection = await getSafeConnection("dynamo1")
+
+    await connection.putItems([
+      {cursor: {hashKey: "test-connection", rangeKey: "1"}, node: {title: "item 1"}},
+      {cursor: {hashKey: "test-connection", rangeKey: "2"}, node: {title: "item 2"}},
+      {cursor: {hashKey: "test-connection", rangeKey: "3"}, node: {title: "item 3"}},
+    ])
+
+    expect(await connection.deleteManyItems([
+      {hashKey: "test-connection", rangeKey: "1"},
+      {hashKey: "test-connection", rangeKey: "2"},
+      {hashKey: "test-connection", rangeKey: "3"},
+    ])).toEqual([true, true, true])
+
+    expect(await connection.getManyItems([
+      {hashKey: "test-connection", rangeKey: "1"},
+      {hashKey: "test-connection", rangeKey: "2"},
+      {hashKey: "test-connection", rangeKey: "3"},
+    ])).toEqual([])
   })
 })

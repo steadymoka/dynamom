@@ -16,7 +16,7 @@ export interface QueryResult<P> {
   endCursor?: DynamoCursor
 }
 
-export interface DynamoNode<P> {
+export interface DynamoNode<P extends {}> {
   cursor: DynamoCursor
   node: P
 }
