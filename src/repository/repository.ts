@@ -55,15 +55,15 @@ export class Repository<Entity> {
     return
   }
 
-  public async create(entity: DeepPartial<Entity>): Promise<Entity> {
-    const node: any = {...entity}
+  public async create(attrs: DeepPartial<Entity>): Promise<Entity> {
+    const entity: any = {...attrs}
     for (const generatedValue of this.options.generatedValues) {
       if (generatedValue.strategy === "uuid") {
-        node[generatedValue.property] = uuid()
+        entity[generatedValue.property] = uuid()
       }
     }
-    Object.setPrototypeOf(node, this.options.ctor.prototype)
-    const id = node[this.options.id.property]
+    Object.setPrototypeOf(entity, this.options.ctor.prototype)
+    const id = entity[this.options.id.property]
     if (!id) {
       throw new Error("id not defined!")
     }
@@ -73,15 +73,22 @@ export class Repository<Entity> {
           hashKey: this.options.name,
           rangeKey: id,
         },
-        node: this.transformer.toPlain(entity),
+        node: this.transformer.toPlain(attrs),
       },
-      // {
-      //   hashKey: this.options.name + "_indexname",
-      //   rangeKey: index,
-      //   item: {sourceid: id},
-      // },
+      ...this.options.indexes.map((index) => {
+        return {
+          cursor: {
+            hashKey: `${this.options.name}__${index.name}`,
+            rangeKey: index.indexer(entity),
+          },
+          node: {
+            sourcetype: this.options.name,
+            sourceid: id,
+          },
+        }
+      }),
     ])
-    return node
+    return entity
   }
 
   public async persist(entity: Entity): Promise<void> {
@@ -97,11 +104,18 @@ export class Repository<Entity> {
         },
         node: this.transformer.toPlain(entity),
       },
-      // {
-      //   hashKey: this.options.name + "_indexname",
-      //   rangeKey: index,
-      //   item: {sourceid: id},
-      // },
+      ...this.options.indexes.map((index) => {
+        return {
+          cursor: {
+            hashKey: `${this.options.name}__${index.name}`,
+            rangeKey: index.indexer(entity),
+          },
+          node: {
+            sourcetype: this.options.name,
+            sourceid: id,
+          },
+        }
+      }),
     ])
   }
 
@@ -111,6 +125,17 @@ export class Repository<Entity> {
       throw new Error("id not defined!")
     }
 
-    await this.connection.deleteItem(this.options.name, id)
+    await this.connection.deleteManyItems([
+      {
+        hashKey: this.options.name,
+        rangeKey: id,
+      },
+      ...this.options.indexes.map((index) => {
+        return {
+          hashKey: `${this.options.name}__${index.name}`,
+          rangeKey: index.indexer(entity),
+        }
+      }),
+    ])
   }
 }

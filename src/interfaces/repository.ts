@@ -6,6 +6,10 @@ export interface RepositoryOptions<P> extends RelaterOptions<P> {
     property: Identifier
     sourceKey: string
   }
+  indexes: {
+    name: string
+    indexer(entity: P): string  
+  }[]
   generatedValues: {
     property: Identifier
     strategy: string

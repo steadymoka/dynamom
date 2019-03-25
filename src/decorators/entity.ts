@@ -1,6 +1,6 @@
+import { toUnderscore } from "relater/lib/utils/to-underscore"
 import { EntityDecoratorFactory } from "../interfaces/decorator"
 import { metadataEntities } from "../metadata"
-import { toUnderscore } from "relater/lib/utils/to-underscore"
 
 
 export const Entity: EntityDecoratorFactory = (options = {}) => (target) => {

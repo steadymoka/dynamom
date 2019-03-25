@@ -1,6 +1,6 @@
 import { ConstructType, createOptions as createRelaterOptions } from "relater"
 import { RepositoryOptions } from "../interfaces/repository"
-import { metadataIds, metadataEntities, metadataGeneratedValues } from "../metadata"
+import { metadataIds, metadataEntities, metadataGeneratedValues, metadataIndexes } from "../metadata"
 
 
 export function createOptions<Entity>(ctor: ConstructType<Entity>): RepositoryOptions<Entity> {
@@ -23,6 +23,10 @@ export function createOptions<Entity>(ctor: ConstructType<Entity>): RepositoryOp
       property: id.property,
       sourceKey: idColumn.sourceKey,
     },
+    indexes: (metadataIndexes.get(ctor) || []).map(({name, indexer}) => ({
+      name,
+      indexer,
+    })),
     generatedValues: (metadataGeneratedValues.get(ctor) || []).map((value) => ({
       property: value.property,
       strategy: value.strategy,

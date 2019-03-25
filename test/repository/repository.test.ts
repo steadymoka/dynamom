@@ -1,4 +1,5 @@
 import * as faker from "faker"
+
 import { DynamoCursor } from "../../src"
 import { createOptions } from "../../src/repository/create-options"
 import { Repository } from "../../src/repository/repository"

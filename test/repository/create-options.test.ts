@@ -17,6 +17,12 @@ describe("testsuite of repository/create-options", () => {
           strategy: "uuid",
         }
       ],
+      indexes: [
+        {
+          name: "created",
+          indexer: expect.any(Function),
+        },
+      ],
       columns: [
         {
           property: "id",

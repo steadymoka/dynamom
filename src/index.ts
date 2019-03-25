@@ -29,6 +29,8 @@ export * from "./interfaces/metadata"
 export * from "./interfaces/repository"
 
 export { Entity } from "./decorators/entity"
+export { Index } from "./decorators/index"
+export { ColumnIndex } from "./decorators/column-index"
 export { Id } from "./decorators/id"
 export { GeneratedValue } from "./decorators/generated-value"
 

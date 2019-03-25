@@ -6,6 +6,12 @@ export interface MetadataEntity {
   name: string
 }
 
+export interface MetadataIndex {
+  target: any
+  name: string
+  indexer(entity: any): string
+}
+
 export interface MetadataGeneratedValue {
   target: any
   property: Identifier
