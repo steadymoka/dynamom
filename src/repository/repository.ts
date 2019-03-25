@@ -2,7 +2,7 @@ import { DeepPartial, Transformer } from "relater"
 import * as uuid from "uuid/v4"
 import { Connection } from "../connection/connection"
 import { DynamoCursor } from "../interfaces/connection"
-import { RepositoryOptions } from "../interfaces/repository"
+import { RepositoryOptions, RetrieveOptions, RetrieveResult } from "../interfaces/repository"
 
 
 function encodeBase64(cursor: DynamoCursor): string {
@@ -17,15 +17,20 @@ export class Repository<Entity> {
   
   public transformer: Transformer<Entity>
 
-  public async retrieve(options: {limit?: number, after: string}, byIndex?: string) {
+  public constructor(public connection: Connection, public options: RepositoryOptions<Entity>) {
+    this.transformer = new Transformer(options)
+  }
+
+  public async retrieve({limit = 20, after}: RetrieveOptions = {}, byIndex?: string): Promise<RetrieveResult<Entity>> {
     const result = await this.connection.query(this.options.name, {
-      limit: options.limit,
-      after: options.after ? decodeBase64(options.after) : undefined,
+      limit,
+      after: after ? decodeBase64(after) : undefined,
     })
     return {
       nodes: result.nodes.map(({node, cursor}) => {
+        node[this.options.id.sourceKey] = cursor.rangeKey
         return {
-          node,
+          node: this.transformer.toEntity(node),
           cursor: encodeBase64(cursor),
         }
       }),
@@ -39,10 +44,6 @@ export class Repository<Entity> {
     //     },
     //   },
     // }).promise()
-  }
-
-  public constructor(public connection: Connection, public options: RepositoryOptions<Entity>) {
-    this.transformer = new Transformer(options)
   }
 
   public async find(id: string): Promise<Entity | undefined> {

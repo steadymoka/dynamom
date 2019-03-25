@@ -11,3 +11,18 @@ export interface RepositoryOptions<P> extends RelaterOptions<P> {
     strategy: string
   }[]
 }
+
+export interface RetrieveOptions {
+  limit?: number
+  // offset?: number
+  after?: string
+}
+
+export interface RetrieveResult<P> {
+  nodes: {
+    cursor: string
+    node: P
+  }[]
+  endCursor?: string
+}
+

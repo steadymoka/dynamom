@@ -19,6 +19,10 @@ export async function getDynamoClient() {
 }
 
 export function getDockerComposePort(service: string, port: number): Promise<number> {
+  let cachedPort: number | undefined
+  if (cachedPort) {
+    return Promise.resolve(cachedPort)
+  }
   return new Promise((resolve, reject) => {
     exec(`docker-compose port ${service} ${port}`, (error, stdout) => {
       if (error) {
@@ -26,7 +30,8 @@ export function getDockerComposePort(service: string, port: number): Promise<num
         return
       }
       const result = stdout.trim().split(":")
-      resolve(parseInt(result[1], 10))
+      cachedPort = parseInt(result[1], 10)
+      resolve(cachedPort)
     })
   })
 }

@@ -1,4 +1,5 @@
 import * as faker from "faker"
+import { DynamoCursor } from "../../src"
 import { createOptions } from "../../src/repository/create-options"
 import { Repository } from "../../src/repository/repository"
 import { getSafeConnection } from "../helper"
@@ -7,6 +8,10 @@ import { User } from "../stubs/user"
 
 const TableName = "dynamo1_service" 
 const range = (start: number, end: number) => Array.from({length: (end - start)}, (_, k) => k + start)
+
+function encodeBase64(cursor: DynamoCursor): string {
+  return Buffer.from(JSON.stringify(cursor)).toString("base64")
+}
 
 function createFakeUser() {
   return {
@@ -20,7 +25,6 @@ describe("testsuite of repository/repository", () => {
   it("test create", async () => {
     const connection = await getSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
-
     const fakeUser = createFakeUser()
 
     const user = await repository.create(fakeUser)
@@ -56,7 +60,6 @@ describe("testsuite of repository/repository", () => {
   it("test find", async () => {
     const connection = await getSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
-
     const fakeUser = createFakeUser()
 
     const user = await repository.create(fakeUser)
@@ -82,7 +85,6 @@ describe("testsuite of repository/repository", () => {
   it("test remove", async () => {
     const connection = await getSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
-
     const fakeUser = createFakeUser()
 
     const user = await repository.create(fakeUser)
@@ -95,20 +97,34 @@ describe("testsuite of repository/repository", () => {
     expect(await repository.find(user.id)).toBeUndefined() // not exists!!!
   })
   
-  // it("test retrieve", async () => {
-  //   const connection = await getSafeConnection(table)
-  //   const repository = new Repository(connection, createOptions(User))
 
-  //   const users = await Promise.all(range(0, 20).map(() => repository.create({
-  //     email: faker.internet.email(),
-  //     username: faker.internet.userName(),
-  //     createdAt: new Date().getTime(),
-  //   })))
+  it("test retrieve", async () => {
+    const connection = await getSafeConnection(TableName)
+    const repository = new Repository(connection, createOptions(User))
+    const users = await Promise.all(range(0, 20).map(() => repository.create(createFakeUser())))
 
-  //   Promise.all(users.map(user => repository.dele))
-    
-    
-  // })
+    const result1 = await repository.retrieve({limit: 5})
+    const result2 = await repository.retrieve({after: result1.endCursor})
+
+    // all delete
+    await Promise.all(users.map(user => repository.remove(user)))
+
+    const sortedUsers = users.sort((a, b) => a.id > b.id ? 1 : -1)
+    expect(result1).toEqual({
+      nodes: sortedUsers.slice(0, 5).map(user => ({
+        cursor: encodeBase64({hashKey: "user", rangeKey: user.id}),
+        node: user,
+      })),
+      endCursor: encodeBase64({hashKey: "user", rangeKey: sortedUsers[4].id}),
+    })
+
+    expect(result2).toEqual({
+      nodes: sortedUsers.slice(5).map(user => ({
+        cursor: encodeBase64({hashKey: "user", rangeKey: user.id}),
+        node: user,
+      })),
+    })
+  })
 
 
   it("test persist(update)", async () => {
