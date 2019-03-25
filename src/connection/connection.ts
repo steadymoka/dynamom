@@ -1,12 +1,9 @@
 import { DynamoDB } from "aws-sdk"
 import { BillingMode, ProvisionedThroughput, WriteRequest } from "aws-sdk/clients/dynamodb"
-import {
-  ConnectionOptions,
-  DynamoNode,
-  QueryOptions,
-  QueryResult,
-  DynamoCursor
-} from "../interfaces/connection"
+import { ConstructType } from "relater"
+import { ConnectionOptions, DynamoCursor, DynamoNode, QueryOptions, QueryResult } from "../interfaces/connection"
+import { createOptions } from "../repository/create-options"
+import { Repository } from "../repository/repository"
 import { fromDynamoAttributeMap } from "./from-dynamo-attribute"
 import { toDynamoAttributeMap } from "./to-dynamo-attribute"
 
@@ -18,6 +15,8 @@ export class Connection {
     hashKey: string
     rangeKey: string
   }
+
+  public repositories = new Map<ConstructType<any>, Repository<any>>()
 
   public constructor(public client: DynamoDB, options: ConnectionOptions) {
     this.options = {
@@ -77,6 +76,15 @@ export class Connection {
       return description
     }
     throw new Error(`table(${this.options.table}) not found.`)
+  }
+
+  public getRepository<Entity, R extends Repository<Entity>>(ctor: ConstructType<Entity>): R {
+    let repository = this.repositories.get(ctor)
+    if (!repository) {
+      repository = new Repository(this, createOptions(ctor))
+      this.repositories.set(ctor, repository)
+    }
+    return repository as R
   }
 
   public query<P = any>(hashKey: string, {limit = 20, after, desc = false}: QueryOptions = {}): Promise<QueryResult<P>> {
