@@ -26,15 +26,21 @@ export class Repository<Entity> {
       limit,
       after: after ? decodeBase64(after) : undefined,
     })
+    const nodes = result.nodes.map(({node, cursor}) => {
+      node[this.options.id.sourceKey] = cursor.rangeKey
+      return {
+        node: this.transformer.toEntity(node),
+        cursor: encodeBase64(cursor),
+      }
+    })
+    if (result.endCursor) {
+      return {
+        nodes,
+        endCursor: encodeBase64(result.endCursor),
+      }  
+    }
     return {
-      nodes: result.nodes.map(({node, cursor}) => {
-        node[this.options.id.sourceKey] = cursor.rangeKey
-        return {
-          node: this.transformer.toEntity(node),
-          cursor: encodeBase64(cursor),
-        }
-      }),
-      endCursor: result.endCursor ? encodeBase64(result.endCursor) : undefined,
+      nodes,
     }
   
     // const result2 = await this.client.batchGet({
@@ -96,6 +102,10 @@ export class Repository<Entity> {
     if (!id) {
       throw new Error("id not defined!")
     }
+
+    // @todo remove legacy index
+    // await this.connection.deleteManyItems([])
+
     await this.connection.putItems([
       {
         cursor: {

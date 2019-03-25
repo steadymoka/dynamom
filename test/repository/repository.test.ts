@@ -39,22 +39,24 @@ describe("testsuite of repository/repository", () => {
     expect(user).toBeInstanceOf(User)
 
 
-    expect(await connection.client.getItem({
-      TableName,
-      Key: {hashid: {S: "user"}, rangeid: {S: user.id}},
-    }).promise()).toEqual({
-      Item: {
-        hashid: {S: "user" },
-        rangeid: {S: user.id}, // generated uuid
-        email: {S: fakeUser.email},
-        username: {S: fakeUser.username},
-        created_at: {N: `${fakeUser.createdAt}`},
-      }
+    expect(await connection.getItem("user", user.id)).toEqual({
+      hashid: "user",
+      rangeid: user.id, // generated uuid
+      email: fakeUser.email,
+      username: fakeUser.username,
+      created_at: fakeUser.createdAt,
     })
-    await connection.client.deleteItem({
-      TableName,
-      Key: {hashid: {S: "user"}, rangeid: {S: user.id}},
-    }).promise()
+    expect(await connection.getItem("user__created", `${fakeUser.createdAt}`)).toEqual({
+      hashid: "user__created",
+      rangeid: `${fakeUser.createdAt}`,
+      sourcetype: "user",
+      sourceid: user.id, // generated uuid
+    })
+
+    await connection.deleteManyItems([
+      {hashKey: "user", rangeKey: user.id},
+      {hashKey: "user__created", rangeKey: `${fakeUser.createdAt}`},
+    ])
   })
 
 
@@ -76,10 +78,10 @@ describe("testsuite of repository/repository", () => {
     expect(foundUser).toBeInstanceOf(User)
 
 
-    await connection.client.deleteItem({
-      TableName: "dynamo1_service",
-      Key: {hashid: {S: "user"}, rangeid: {S: user.id}},
-    }).promise()
+    await connection.deleteManyItems([
+      {hashKey: "user", rangeKey: user.id},
+      {hashKey: "user__created", rangeKey: `${fakeUser.createdAt}`},
+    ])
   })
 
 
@@ -95,7 +97,9 @@ describe("testsuite of repository/repository", () => {
 
     expect(await repository.remove(user)).toBeUndefined() // return void
 
-    expect(await repository.find(user.id)).toBeUndefined() // not exists!!!
+    // not exists!
+    expect(await connection.getItem("user", user.id)).toEqual(null)
+    expect(await connection.getItem("user__created", `${fakeUser.createdAt}`)).toEqual(null)
   })
   
 
