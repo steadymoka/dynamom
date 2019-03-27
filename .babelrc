@@ -2,7 +2,8 @@
   "presets": [
     ["@babel/preset-env", {
       "targets": "maintained node versions",
-      "useBuiltIns": "usage"
+      "useBuiltIns": "usage",
+      "corejs": 3
     }],
     "@babel/typescript"
   ],
