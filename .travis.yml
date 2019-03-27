@@ -1,4 +1,11 @@
 
+sudo: required
+services:
+  - docker
+
+before_install:
+  - docker-compose up -d
+
 language: node_js
 node_js:
   - 11

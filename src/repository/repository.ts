@@ -1,5 +1,5 @@
 import { DeepPartial, Transformer } from "relater"
-import * as uuid from "uuid/v4"
+import uuid from "uuid/v4"
 import { Connection } from "../connection/connection"
 import { DynamoCursor } from "../interfaces/connection"
 import { RepositoryOptions, RetrieveOptions, RetrieveResult } from "../interfaces/repository"

@@ -13,3 +13,7 @@
 </p>
 
 Dynamo DB one table ORM for Javascript(& Typescript).
+
+## License
+
+MIT

@@ -13,6 +13,7 @@
     "sourceMap": true,
     "strict": true,
     "noImplicitReturns": true,
+    "esModuleInterop": true,
     "experimentalDecorators": true
   },
   "include": [
