@@ -1,8 +1,8 @@
-import * as faker from "faker"
+import faker from "faker"
 
-import { DynamoCursor } from "../../src"
-import { createOptions } from "../../src/repository/create-options"
-import { Repository } from "../../src/repository/repository"
+import { DynamoCursor } from "../../lib"
+import { createOptions } from "../../lib/repository/create-options"
+import { Repository } from "../../lib/repository/repository"
 import { getSafeConnection } from "../helper"
 import { User } from "../stubs/user"
 

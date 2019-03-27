@@ -1,6 +1,6 @@
 import { DynamoDB } from "aws-sdk"
 import { exec } from "child_process"
-import { Connection } from "../src/connection/connection"
+import { Connection } from "../lib/connection/connection"
 
 export async function getSafeConnection(table: string) {
   const ddb = await getDynamoClient()

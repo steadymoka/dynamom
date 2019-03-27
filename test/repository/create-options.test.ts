@@ -1,4 +1,4 @@
-import { createOptions } from "../../src/repository/create-options"
+import { createOptions } from "../../lib/repository/create-options"
 import { User } from "../stubs/user"
 
 

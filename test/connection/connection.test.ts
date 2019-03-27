@@ -1,4 +1,4 @@
-import { Connection } from "../../src/connection/connection"
+import { Connection } from "../../lib/connection/connection"
 import { getDynamoClient, getSafeConnection } from "../helper"
 
 
