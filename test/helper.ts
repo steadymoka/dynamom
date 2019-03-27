@@ -14,6 +14,10 @@ export async function getSafeConnection(table: string) {
 export async function getDynamoClient() {
   return new DynamoDB({
     endpoint: `http://localhost:${await getDockerComposePort("dynamodb", 8000)}`,
+    credentials: {
+      accessKeyId: "accesskey",
+      secretAccessKey: "secret",
+    },
     region: "ap-northeast-2",
   })
 }
