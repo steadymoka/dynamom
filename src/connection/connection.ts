@@ -155,6 +155,9 @@ export class Connection {
   }
 
   public getManyItems(cursors: DynamoCursor[]): Promise<any[]> {
+    if (cursors.length === 0) {
+      return Promise.resolve([])
+    }
     return new Promise((resolve, reject) => this.client.batchGetItem({
       RequestItems: {
         [this.options.table]: {
@@ -214,6 +217,9 @@ export class Connection {
   }
 
   public deleteManyItems(cursors: DynamoCursor[]): Promise<boolean[]> {
+    if (cursors.length === 0) {
+      return Promise.resolve([])
+    }
     return new Promise(((resolve, reject) => {
       this.client.batchWriteItem({
         RequestItems: {
@@ -251,35 +257,60 @@ export class Connection {
     }))
   }
 
-  public putItems<P = any>(rows: DynamoNode<P>[] = []) {
-    return this.client.batchWriteItem({
-      RequestItems: {
-        [this.options.table]: [
-          ...rows.map(({cursor: {hashKey, rangeKey}, node}): WriteRequest => {
-            if (typeof (node as any)[this.options.hashKey] !== "undefined"
-              && (node as any)[this.options.hashKey] !== hashKey) {
-              throw new Error(`duplicate with hashKey`)
-            }
-            if (typeof (node as any)[this.options.rangeKey] !== "undefined"
-              && (node as any)[this.options.rangeKey] !== rangeKey) {
-              throw new Error(`duplicate with rangeKey`)
-            }
-            return {
-              PutRequest: {
-                Item: {
-                  [this.options.hashKey]: {
-                    S: hashKey,
-                  },
-                  [this.options.rangeKey]: {
-                    S: rangeKey,
-                  },
-                  ...toDynamoAttributeMap(node),
+  public putItems<P = any>(rows: DynamoNode<P>[] = []): Promise<boolean[]> {
+    if (rows.length === 0) {
+      return Promise.resolve([])
+    }
+    return new Promise((resolve, reject) => {
+      let writeRequests: WriteRequest[]
+      try {
+        writeRequests = rows.map(({cursor: {hashKey, rangeKey}, node}): WriteRequest => {
+          if (typeof (node as any)[this.options.hashKey] !== "undefined"
+            && (node as any)[this.options.hashKey] !== hashKey) {
+            throw new Error(`duplicate with hashKey`)
+          }
+          if (typeof (node as any)[this.options.rangeKey] !== "undefined"
+            && (node as any)[this.options.rangeKey] !== rangeKey) {
+            throw new Error(`duplicate with rangeKey`)
+          }
+          return {
+            PutRequest: {
+              Item: {
+                [this.options.hashKey]: {
+                  S: hashKey,
                 },
-              }
+                [this.options.rangeKey]: {
+                  S: rangeKey,
+                },
+                ...toDynamoAttributeMap(node),
+              },
             }
-          }),
-        ]
+          }
+        })
+      } catch (e) {
+        return reject(e)
       }
-    }).promise()
+
+      this.client.batchWriteItem({
+        RequestItems: {
+          [this.options.table]: writeRequests,
+        }
+      }, (err, result) => {
+        if (err) {
+          return reject(err)
+        }
+        if (result.UnprocessedItems && result.UnprocessedItems[this.options.table]) {
+          const failKeys = result.UnprocessedItems[this.options.table]
+            .filter(({DeleteRequest}) => DeleteRequest)
+            .map(({DeleteRequest}) => DeleteRequest!.Key)
+          resolve(rows.map(({cursor}) => {
+            const foundFailKey = failKeys.find((failKey) => failKey[this.options.hashKey].S === cursor.hashKey
+              && failKey[this.options.rangeKey].S === cursor.rangeKey)
+            return foundFailKey ? true : false
+          }))
+        }
+        resolve(rows.map(() => true))
+      })
+    })
   }
 }

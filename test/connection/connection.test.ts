@@ -211,26 +211,37 @@ describe("testsuite of connection/connection", () => {
   it("test putItems", async () => {
     const connection = await getSafeConnection("dynamo1")
 
-    expect(() => connection.putItems([{
-      cursor: {
-        hashKey: "users",
-        rangeKey: "1",
-      },
-      node: {
-        hashid: "hello world1",
-      },
-    }])).toThrowError(new Error("duplicate with hashKey"))
-    expect(() => connection.putItems([{
-      cursor: {
-        hashKey: "users",
-        rangeKey: "1",
-      },
-      node: {
-        rangeid: "hello world1",
-      },
-    }])).toThrowError(new Error("duplicate with rangeKey"))
+    try {
+      await connection.putItems([{
+        cursor: {
+          hashKey: "users",
+          rangeKey: "1",
+        },
+        node: {
+          hashid: "hello world1",
+        },
+      }])
+      fail("throw")
+    } catch (e) {
+      expect(e).toEqual(new Error("duplicate with hashKey"))
+    }
+    try {
+      await connection.putItems([{
+        cursor: {
+          hashKey: "users",
+          rangeKey: "1",
+        },
+        node: {
+          rangeid: "hello world1",
+        },
+      }])
+      fail("throw")
+    } catch (e) {
+      expect(e).toEqual(new Error("duplicate with rangeKey"))
+    }
 
-    await connection.putItems([{
+    expect(await connection.putItems([])).toEqual([])
+    expect(await connection.putItems([{
       cursor: {
         hashKey: "users",
         rangeKey: "3",
@@ -249,9 +260,9 @@ describe("testsuite of connection/connection", () => {
           foo: "foo string"
         },
       },
-    }])
+    }])).toEqual([true])
 
-    await connection.putItems([{
+    expect(await connection.putItems([{
       cursor: {
         hashKey: "users",
         rangeKey: "4",
@@ -259,7 +270,7 @@ describe("testsuite of connection/connection", () => {
       node: {
         title: "this is test putItems"
       },
-    }])
+    }])).toEqual([true])
 
     expect(await connection.getItem("users", "3")).toEqual({
       hashid: "users",
@@ -286,6 +297,8 @@ describe("testsuite of connection/connection", () => {
 
   it("test getManyItems", async () => {
     const connection = await getSafeConnection("dynamo1")
+
+    expect(await connection.getManyItems([])).toEqual([])
 
     expect(await connection.getManyItems([
       {hashKey: "test-connection", rangeKey: "1"},
@@ -325,6 +338,8 @@ describe("testsuite of connection/connection", () => {
       {cursor: {hashKey: "test-connection", rangeKey: "2"}, node: {title: "item 2"}},
       {cursor: {hashKey: "test-connection", rangeKey: "3"}, node: {title: "item 3"}},
     ])
+
+    expect(await connection.deleteManyItems([])).toEqual([])
 
     expect(await connection.deleteManyItems([
       {hashKey: "test-connection", rangeKey: "1"},
