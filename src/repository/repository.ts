@@ -102,13 +102,13 @@ export class Repository<Entity> {
           hashKey: this.options.name,
           rangeKey: id,
         },
-        node: this.transformer.toPlain(attrs),
+        node: this.transformer.toPlain(entity as Entity),
       },
       ...this.options.indexes.map((index) => {
         return {
           cursor: {
             hashKey: `${this.options.name}__${index.name}`,
-            rangeKey: index.indexer(entity),
+            rangeKey: `${index.indexer(entity)}__${id}`,
           },
           node: {
             sourcetype: this.options.name,
@@ -141,7 +141,7 @@ export class Repository<Entity> {
         return {
           cursor: {
             hashKey: `${this.options.name}__${index.name}`,
-            rangeKey: index.indexer(entity),
+            rangeKey: `${index.indexer(entity)}__${id}`,
           },
           node: {
             sourcetype: this.options.name,
@@ -166,7 +166,7 @@ export class Repository<Entity> {
       ...this.options.indexes.map((index) => {
         return {
           hashKey: `${this.options.name}__${index.name}`,
-          rangeKey: index.indexer(entity),
+          rangeKey: `${index.indexer(entity)}__${id}`,
         }
       }),
     ])

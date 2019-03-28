@@ -42,20 +42,21 @@ describe("testsuite of repository/repository", () => {
     expect(await connection.getItem("user", user.id)).toEqual({
       hashid: "user",
       rangeid: user.id, // generated uuid
+      user_id: user.id,
       email: fakeUser.email,
       username: fakeUser.username,
       created_at: fakeUser.createdAt,
     })
-    expect(await connection.getItem("user__created", `${fakeUser.createdAt}`)).toEqual({
+    expect(await connection.getItem("user__created", `${fakeUser.createdAt}__${user.id}`)).toEqual({
       hashid: "user__created",
-      rangeid: `${fakeUser.createdAt}`,
+      rangeid: `${fakeUser.createdAt}__${user.id}`,
       sourcetype: "user",
       sourceid: user.id, // generated uuid
     })
 
     await connection.deleteManyItems([
       {hashKey: "user", rangeKey: user.id},
-      {hashKey: "user__created", rangeKey: `${fakeUser.createdAt}`},
+      {hashKey: "user__created", rangeKey: `${fakeUser.createdAt}__${user.id}`},
     ])
   })
 
@@ -80,7 +81,7 @@ describe("testsuite of repository/repository", () => {
 
     await connection.deleteManyItems([
       {hashKey: "user", rangeKey: user.id},
-      {hashKey: "user__created", rangeKey: `${fakeUser.createdAt}`},
+      {hashKey: "user__created", rangeKey: `${fakeUser.createdAt}__${user.id}`},
     ])
   })
 
@@ -94,18 +95,26 @@ describe("testsuite of repository/repository", () => {
 
     expect(await repository.find(user.id)).toEqual(user) // exists
 
+    // exists!
+    expect(await connection.getItem("user", user.id)).not.toEqual(null)
+    expect(await connection.getItem("user__created", `${fakeUser.createdAt}__${user.id}`)).not.toEqual(null)
+    
 
     expect(await repository.remove(user)).toBeUndefined() // return void
 
     // not exists!
     expect(await connection.getItem("user", user.id)).toEqual(null)
-    expect(await connection.getItem("user__created", `${fakeUser.createdAt}`)).toEqual(null)
+    expect(await connection.getItem("user__created", `${fakeUser.createdAt}__${user.id}`)).toEqual(null)
   })
   
 
   it("test retrieve", async () => {
     const connection = await getSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
+
+    // clean
+    // await Promise.all((await repository.retrieve({limit: 100})).nodes.map(node => repository.remove(node.node)))
+
     const users = await Promise.all(range(0, 20).map(() => repository.create(createFakeUser())))
 
     const result1 = await repository.retrieve({limit: 5})
@@ -134,9 +143,11 @@ describe("testsuite of repository/repository", () => {
   it("test retrieve by index", async () => {
     const connection = await getSafeConnection(TableName)
     const repository = new Repository(connection, createOptions(User))
-    const users = await Promise.all(range(0, 10).map(() => repository.create(createFakeUser())))
 
-    // console.log("rawdata", users)
+    // clean
+    // await Promise.all((await repository.retrieve({limit: 100})).nodes.map(node => repository.remove(node.node)))
+
+    const users = await Promise.all(range(0, 10).map(() => repository.create(createFakeUser())))
 
     const result1 = await repository.retrieve({limit: 5, index: "created", desc: true})
     const result2 = await repository.retrieve({after: result1.endCursor, index: "created", desc: true})
@@ -148,14 +159,14 @@ describe("testsuite of repository/repository", () => {
 
     expect(result1).toEqual({
       nodes: sortedUsers.slice(0, 5).map(user => ({
-        cursor: encodeBase64({hashKey: "user__created", rangeKey: user.createdAt + ""}),
+        cursor: encodeBase64({hashKey: "user__created", rangeKey: `${user.createdAt}__${user.id}`}),
         node: user,
       })),
-      endCursor: encodeBase64({hashKey: "user__created", rangeKey: sortedUsers[4].createdAt + ""}),
+      endCursor: encodeBase64({hashKey: "user__created", rangeKey: `${sortedUsers[4].createdAt}__${sortedUsers[4].id}`}),
     })
     expect(result2).toEqual({
       nodes: sortedUsers.slice(5).map(user => ({
-        cursor: encodeBase64({hashKey: "user__created", rangeKey: user.createdAt + ""}),
+        cursor: encodeBase64({hashKey: "user__created", rangeKey: `${user.createdAt}__${user.id}`}),
         node: user,
       })),
     })
