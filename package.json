@@ -1,6 +1,6 @@
 {
   "name": "dynamo1",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Dynamo DB one table ORM for Javascript(& Typescript).",
   "keywords": [
     "dynamodb",
