@@ -1,6 +1,6 @@
 {
   "name": "dynamom",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Custom dynamo1(https://github.com/corgidisco/dynamo1)",
   "keywords": [
     "dynamodb",

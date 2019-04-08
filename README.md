@@ -1,4 +1,4 @@
-# Dynamo1
+# Dynamom (forked from corgidisco/dynamo1)
 
 <p>
   <!-- <a href="https://travis-ci.org/corgidisco/dynamo1"><img alt="Build" src="https://img.shields.io/travis/corgidisco/dynamo1.svg" /></a> -->
