@@ -1,7 +1,7 @@
 {
   "name": "dynamom",
-  "version": "0.0.2",
-  "description": "Custom dynamo1(https://github.com/corgidisco/dynamo1)",
+  "version": "0.0.3",
+  "description": "forked from corgidisco/dynamo1(https://github.com/corgidisco/dynamo1)",
   "keywords": [
     "dynamodb",
     "database",
@@ -13,7 +13,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/moka-a/dynamo1.git"
+    "url": "git://github.com/moka-a/dynamom.git"
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",

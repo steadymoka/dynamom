@@ -6,8 +6,8 @@
   <a href="https://www.npmjs.com/package/dynamom"><img alt="Version" src="https://img.shields.io/npm/v/dynamom.svg" /></a>
   <a href="https://www.npmjs.com/package/dynamom"><img alt="License" src="https://img.shields.io/npm/l/dynamom.svg" /></a>
   <br />
-  <a href="https://david-dm.org/moka-a/dynamo1"><img alt="dependencies Status" src="https://david-dm.org/moka-a/dynamo1/status.svg" /></a>
-  <a href="https://david-dm.org/moka-a/dynamo1?type=dev"><img alt="devDependencies Status" src="https://david-dm.org/moka-a/dynamo1/dev-status.svg" /></a>
+  <a href="https://david-dm.org/moka-a/dynamom"><img alt="dependencies Status" src="https://david-dm.org/moka-a/dynamom/status.svg" /></a>
+  <a href="https://david-dm.org/moka-a/dynamom?type=dev"><img alt="devDependencies Status" src="https://david-dm.org/moka-a/dynamom/dev-status.svg" /></a>
   <br />
   <a href="https://www.npmjs.com/package/dynamom"><img alt="NPM" src="https://nodei.co/npm/dynamom.png" /></a>
 </p>
