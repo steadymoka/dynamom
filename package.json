@@ -1,18 +1,19 @@
 {
-  "name": "dynamo1",
-  "version": "0.1.3",
-  "description": "Dynamo DB one table ORM for Javascript(& Typescript).",
+  "name": "dynamom",
+  "version": "0.0.1",
+  "description": "Custom dynamo1(https://github.com/corgidisco/dynamo1)",
   "keywords": [
     "dynamodb",
     "database",
     "orm",
-    "typescript"
+    "typescript",
+    "dynamo1"
   ],
-  "author": "Cris <corgidisco@gmail.com>",
+  "author": "Moka <aud1220a@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/corgidisco/dynamo1.git"
+    "url": "git://github.com/moka-a/dynamom.git"
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
