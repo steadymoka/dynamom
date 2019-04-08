@@ -11,7 +11,7 @@ import { toDynamoAttributeMap } from "./to-dynamo-attribute"
 export class Connection {
   
   public options: {
-    table: string
+    table: string // table 말고 .. service ?? table 이긴 하지만 ..
     hashKey: string
     rangeKey: string
   }

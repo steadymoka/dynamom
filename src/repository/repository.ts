@@ -25,7 +25,7 @@ export class Repository<Entity> {
     let endCursor: DynamoCursor | undefined
     const nodes: {cursor: string, node: Entity}[] = []
     if (index) {
-      const indexes = await this.connection.query(`${this.options.name}__${index}`, {
+      const indexes = await this.connection.query(`${this.options.name}__${index}`, { // this.options.name -> table_name 으로 바꾸면 좋을 듯 아니면 table
         limit,
         after: after ? decodeBase64(after) : undefined,
         desc,
@@ -44,12 +44,12 @@ export class Repository<Entity> {
           foundNode[this.options.id.sourceKey] = foundNode[this.connection.options.rangeKey]
           nodes.push({
             node: this.transformer.toEntity(foundNode),
-            cursor: encodeBase64(cursor),
+            cursor: encodeBase64(cursor), // cursor 는 뺴도되지 않나 ?? 어차피 endCursor 는 줄거니까 ??
           })
         }
       })
     } else {
-      const result = await this.connection.query(this.options.name, {
+      const result = await this.connection.query(this.options.name, { // this.options.name -> table_name 으로 바꾸면 좋을 듯 아니면 table
         limit,
         after: after ? decodeBase64(after) : undefined,
         desc,
@@ -108,7 +108,7 @@ export class Repository<Entity> {
         return {
           cursor: {
             hashKey: `${this.options.name}__${index.name}`,
-            rangeKey: `${index.indexer(entity)}__${id}`,
+            rangeKey: `${index.indexer(entity)}__${id}`, // __id 는 뺴야하지 않나 ??
           },
           node: {
             sourcetype: this.options.name,
