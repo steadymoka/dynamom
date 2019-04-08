@@ -13,7 +13,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/moka-a/dynamom.git"
+    "url": "git://github.com/moka-a/dynamo1.git"
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
