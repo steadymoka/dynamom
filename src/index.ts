@@ -39,5 +39,6 @@ export { GeneratedValue } from "./decorators/generated-value"
 export { columnBy } from "./indexer/column-by"
 
 export { Repository } from "./repository/repository"
+export { createOptions } from "./repository/create-options"
 
 export * from "./metadata"
