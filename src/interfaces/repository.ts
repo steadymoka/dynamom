@@ -22,6 +22,7 @@ export interface RetrieveOptions {
   after?: string
   index?: string
   desc?: boolean
+  filter?: string | number | boolean
 }
 
 export interface RetrieveResult<P> {
@@ -31,4 +32,3 @@ export interface RetrieveResult<P> {
   }[]
   endCursor?: string
 }
-

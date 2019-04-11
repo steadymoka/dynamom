@@ -19,6 +19,7 @@ function createFakeUser() {
     username: faker.internet.userName(),
     email: faker.internet.email(),
     createdAt: new Date().getTime(),
+    type: faker.random.word()
   }
 }
 
@@ -34,6 +35,7 @@ describe("testsuite of repository/repository", () => {
       id: user.id, // :-)
       username: fakeUser.username,
       email: fakeUser.email,
+      type: fakeUser.type,
       createdAt: fakeUser.createdAt,
     })
     expect(user).toBeInstanceOf(User)
@@ -44,6 +46,7 @@ describe("testsuite of repository/repository", () => {
       rangeid: user.id, // generated uuid
       user_id: user.id,
       email: fakeUser.email,
+      type: fakeUser.type,
       username: fakeUser.username,
       created_at: fakeUser.createdAt,
     })
@@ -74,6 +77,7 @@ describe("testsuite of repository/repository", () => {
       id: user.id,
       username: fakeUser.username,
       email: fakeUser.email,
+      type: fakeUser.type,
       createdAt: fakeUser.createdAt,
     })
     expect(foundUser).toBeInstanceOf(User)
@@ -167,6 +171,27 @@ describe("testsuite of repository/repository", () => {
     expect(result2).toEqual({
       nodes: sortedUsers.slice(5).map(user => ({
         cursor: encodeBase64({hashKey: "user__created", rangeKey: `${user.createdAt}__${user.id}`}),
+        node: user,
+      })),
+    })
+  })
+
+
+  it("test retrieve by filter", async () => {
+    const connection = await getSafeConnection(TableName)
+    const repository = new Repository(connection, createOptions(User))
+
+    const users = await Promise.all(range(0, 10).map(() => repository.create(createFakeUser())))
+    const filter = users[0].type
+
+    const result1 = await repository.retrieve({limit: 10, index: "type", desc: true, filter})
+
+    // all delete
+    await Promise.all(users.map(user => repository.remove(user)))
+
+    expect(result1).toEqual({
+      nodes: users.filter(it => { return it.type == filter }).map(user => ({
+        cursor: encodeBase64({hashKey: "user__type", rangeKey: `${user.type}__${user.id}`}),
         node: user,
       })),
     })

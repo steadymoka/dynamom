@@ -11,7 +11,7 @@ import { toDynamoAttributeMap } from "./to-dynamo-attribute"
 export class Connection {
   
   public options: {
-    table: string // table 말고 .. service ?? table 이긴 하지만 ..
+    table: string
     hashKey: string
     rangeKey: string
   }
@@ -87,21 +87,34 @@ export class Connection {
     return repository as R
   }
 
-  public query<P = any>(hashKey: string, {limit = 20, after, desc = false}: QueryOptions = {}): Promise<QueryResult<P>> {
+  public query<P = any>(hashKey: string, {limit = 20, after, desc = false, filter}: QueryOptions = {}): Promise<QueryResult<P>> {
     return new Promise((resolve, reject) => this.client.query({
       TableName: this.options.table,
       Limit: limit,
-      KeyConditionExpression: `#hashkey = :hashkey`,
-      ExpressionAttributeNames: {
-        "#hashkey": this.options.hashKey,
-      },
-      ExpressionAttributeValues: {
-        ":hashkey": {S: hashKey},
-      },
-      ExclusiveStartKey: after ? {
-        [this.options.hashKey]: {S: after.hashKey},
-        [this.options.rangeKey]: {S: after.rangeKey},
-      } : undefined,
+      KeyConditionExpression: filter ? 
+        `#hashkey = :hashkey and begins_with(#rangekey, :rangekey)` : 
+        `#hashkey = :hashkey`,
+      ExpressionAttributeNames: filter ? 
+        {
+          "#hashkey": this.options.hashKey,
+          "#rangekey": this.options.rangeKey
+        } : 
+        {
+          "#hashkey": this.options.hashKey,
+        },
+      ExpressionAttributeValues: filter ? 
+        {
+          ":hashkey": {S: hashKey},
+          ":rangekey": {S: `${filter}_`}
+        } : 
+        {
+          ":hashkey": {S: hashKey} 
+        },
+      ExclusiveStartKey: after ? 
+        {
+          [this.options.hashKey]: {S: after.hashKey},
+          [this.options.rangeKey]: {S: after.rangeKey},
+        } : undefined,
       ScanIndexForward: !desc,
     }, (err, result) => {
       if (err) {

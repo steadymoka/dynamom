@@ -10,6 +10,7 @@ export interface QueryOptions {
   // offset?: number
   after?: DynamoCursor
   desc?: boolean
+  filter?: string | number | boolean
 }
 
 export interface QueryResult<P> {

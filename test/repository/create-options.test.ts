@@ -19,6 +19,10 @@ describe("testsuite of repository/create-options", () => {
       ],
       indexes: [
         {
+          name: "type",
+          indexer: expect.any(Function),
+        },
+        {
           name: "created",
           indexer: expect.any(Function),
         },
@@ -37,6 +41,11 @@ describe("testsuite of repository/create-options", () => {
         {
           property: "email",
           sourceKey: "email",
+          type: "string",
+        },
+        {
+          property: "type",
+          sourceKey: "type",
           type: "string",
         },
         {

@@ -21,14 +21,15 @@ export class Repository<Entity> {
     this.transformer = new Transformer(options)
   }
 
-  public async retrieve({limit = 20, after, index, desc = false}: RetrieveOptions = {}): Promise<RetrieveResult<Entity>> {
+  public async retrieve({limit = 20, after, index, desc = false, filter}: RetrieveOptions = {}): Promise<RetrieveResult<Entity>> {
     let endCursor: DynamoCursor | undefined
     const nodes: {cursor: string, node: Entity}[] = []
     if (index) {
-      const indexes = await this.connection.query(`${this.options.name}__${index}`, { // this.options.name -> table_name 으로 바꾸면 좋을 듯 아니면 table
+      const indexes = await this.connection.query(`${this.options.name}__${index}`, {
         limit,
         after: after ? decodeBase64(after) : undefined,
         desc,
+        filter: filter
       })
       const result = await this.connection.getManyItems(indexes.nodes.map(({node}) => ({
         hashKey: node.sourcetype,
@@ -44,12 +45,12 @@ export class Repository<Entity> {
           foundNode[this.options.id.sourceKey] = foundNode[this.connection.options.rangeKey]
           nodes.push({
             node: this.transformer.toEntity(foundNode),
-            cursor: encodeBase64(cursor), // cursor 는 뺴도되지 않나 ?? 어차피 endCursor 는 줄거니까 ??
+            cursor: encodeBase64(cursor),
           })
         }
       })
     } else {
-      const result = await this.connection.query(this.options.name, { // this.options.name -> table_name 으로 바꾸면 좋을 듯 아니면 table
+      const result = await this.connection.query(this.options.name, {
         limit,
         after: after ? decodeBase64(after) : undefined,
         desc,
@@ -108,7 +109,7 @@ export class Repository<Entity> {
         return {
           cursor: {
             hashKey: `${this.options.name}__${index.name}`,
-            rangeKey: `${index.indexer(entity)}__${id}`, // __id 는 뺴야하지 않나 ??
+            rangeKey: `${index.indexer(entity)}__${id}`,
           },
           node: {
             sourcetype: this.options.name,
