@@ -16,7 +16,7 @@ export class User {
   @Column()
   public email!: string
 
-  @Column()
+  @Column({name: "type_tt"})
   public type!: string
 
   @Column({name: "created_at"})

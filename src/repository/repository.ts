@@ -21,20 +21,31 @@ export class Repository<Entity> {
     this.transformer = new Transformer(options)
   }
 
-  public async retrieve({limit = 20, after, index, desc = false, filter}: RetrieveOptions = {}): Promise<RetrieveResult<Entity>> {
+  public async retrieve({limit = 20, after, index, desc = false, filter}: RetrieveOptions<Entity> = {}): Promise<RetrieveResult<Entity>> {
     let endCursor: DynamoCursor | undefined
     const nodes: {cursor: string, node: Entity}[] = []
     if (index) {
-      const indexes = await this.connection.query(`${this.options.name}__${index}`, {
+      const indexes = await this.connection.query(`${this.options.name}__${index.name}`, {
         limit,
         after: after ? decodeBase64(after) : undefined,
         desc,
-        filter: filter
+        index: index.filter
       })
-      const result = await this.connection.getManyItems(indexes.nodes.map(({node}) => ({
+      let result = await this.connection.getManyItems(indexes.nodes.map(({node}) => ({
         hashKey: node.sourcetype,
         rangeKey: node.sourceid,
       })))
+      if (filter) {
+        filter = this.transformer.toPlain(filter)
+
+        result = result.filter(it => { 
+          let result = true
+          Object.getOwnPropertyNames(filter).forEach(key => {
+            result = result && (it[`${key}`] == filter![key as keyof Entity])
+          })
+          return result
+        })
+      }
       endCursor = indexes.endCursor
       indexes.nodes.forEach(({node, cursor}) => {
         const foundNode = result.find((result) => {
@@ -54,6 +65,7 @@ export class Repository<Entity> {
         limit,
         after: after ? decodeBase64(after) : undefined,
         desc,
+        filter: filter ? this.transformer.toPlain(filter) : undefined
       })
       endCursor = result.endCursor
       result.nodes.forEach(({node, cursor}) => {

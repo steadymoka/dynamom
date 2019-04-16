@@ -1,4 +1,4 @@
-import { Identifier, RelaterOptions } from "relater"
+import { Identifier, RelaterOptions, DeepPartial } from "relater"
 
 export interface RepositoryOptions<P> extends RelaterOptions<P> {
   name: string
@@ -16,13 +16,12 @@ export interface RepositoryOptions<P> extends RelaterOptions<P> {
   }[]
 }
 
-export interface RetrieveOptions {
+export interface RetrieveOptions<P> {
   limit?: number
-  // offset?: number
   after?: string
-  index?: string
+  index?: {name: string, filter?: string | number | boolean}
   desc?: boolean
-  filter?: string | number | boolean
+  filter?: DeepPartial<P>
 }
 
 export interface RetrieveResult<P> {

@@ -4,7 +4,12 @@ import { Connection } from "../lib/connection/connection"
 
 export async function getSafeConnection(table: string) {
   const ddb = await getDynamoClient()
-  await ddb.deleteTable({ TableName: table }).promise()
+  
+  try {
+    await ddb.deleteTable({ TableName: table }).promise()
+  }
+  catch {
+  }
 
   const connection = new Connection(ddb, {table})
   await connection.initialize({

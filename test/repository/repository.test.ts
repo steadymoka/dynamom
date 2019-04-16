@@ -46,7 +46,7 @@ describe("testsuite of repository/repository", () => {
       rangeid: user.id, // generated uuid
       user_id: user.id,
       email: fakeUser.email,
-      type: fakeUser.type,
+      type_tt: fakeUser.type,
       username: fakeUser.username,
       created_at: fakeUser.createdAt,
     })
@@ -153,8 +153,8 @@ describe("testsuite of repository/repository", () => {
 
     const users = await Promise.all(range(0, 10).map(() => repository.create(createFakeUser())))
 
-    const result1 = await repository.retrieve({limit: 5, index: "created", desc: true})
-    const result2 = await repository.retrieve({after: result1.endCursor, index: "created", desc: true})
+    const result1 = await repository.retrieve({limit: 5, index: {name: "created"}, desc: true})
+    const result2 = await repository.retrieve({after: result1.endCursor, index: {name: "created"}, desc: true})
 
     // all delete
     await Promise.all(users.map(user => repository.remove(user)))
@@ -182,15 +182,17 @@ describe("testsuite of repository/repository", () => {
     const repository = new Repository(connection, createOptions(User))
 
     const users = await Promise.all(range(0, 10).map(() => repository.create(createFakeUser())))
-    const filter = users[0].type
+    
+    const type = users[0].type
+    const email = users[0].email
 
-    const result1 = await repository.retrieve({limit: 10, index: "type", desc: true, filter})
+    const result1 = await repository.retrieve({limit: 10, index: {name: "type", filter: type}, desc: true, filter: {email}})
 
     // all delete
     await Promise.all(users.map(user => repository.remove(user)))
-
+    
     expect(result1).toEqual({
-      nodes: users.filter(it => { return it.type == filter }).map(user => ({
+      nodes: users.filter(it => { return it.type == type }).map(user => ({
         cursor: encodeBase64({hashKey: "user__type", rangeKey: `${user.type}__${user.id}`}),
         node: user,
       })),

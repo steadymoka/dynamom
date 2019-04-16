@@ -87,29 +87,46 @@ export class Connection {
     return repository as R
   }
 
-  public query<P = any>(hashKey: string, {limit = 20, after, desc = false, filter}: QueryOptions = {}): Promise<QueryResult<P>> {
+  public query<P = any>(hashKey: string, {limit = 20, after, desc = false, index, filter}: QueryOptions<P> = {}): Promise<QueryResult<P>> {
+    let keyExpression = `#hashkey = :hashkey`
+    let filterExpression = ``
+    let expressionName: {[key: string]: string} = {
+      "#hashkey": this.options.hashKey,
+    }
+    let expressionValue: {[key: string]: object} = {
+      ":hashkey": {S: hashKey} 
+    }
+    
+    if (index) {
+      keyExpression += " and begins_with(#rangekey, :rangekey)"
+      expressionName["#rangekey"] = this.options.rangeKey
+      expressionValue[":rangekey"] = {S: `${index}_`}
+    }
+    if (filter && typeof filter == "object") {
+      Object.getOwnPropertyNames(filter).forEach(key => {
+        const value = filter[key as keyof P]
+
+        filterExpression = (filterExpression == ``) ? `#${key} = :${key}` : ` and #${key} = :${key}`
+        expressionName[`#${key}`] = key
+        if (typeof value == "boolean") {
+          expressionValue[`:${key}`] = {BOOL: value}
+        }
+        else if (typeof value == "number") {
+          expressionValue[`:${key}`] = {N: `${value}`}
+        }
+        else {
+          expressionValue[`:${key}`] = {S: value}
+        }
+      })
+    }
+
     return new Promise((resolve, reject) => this.client.query({
       TableName: this.options.table,
       Limit: limit,
-      KeyConditionExpression: filter ? 
-        `#hashkey = :hashkey and begins_with(#rangekey, :rangekey)` : 
-        `#hashkey = :hashkey`,
-      ExpressionAttributeNames: filter ? 
-        {
-          "#hashkey": this.options.hashKey,
-          "#rangekey": this.options.rangeKey
-        } : 
-        {
-          "#hashkey": this.options.hashKey,
-        },
-      ExpressionAttributeValues: filter ? 
-        {
-          ":hashkey": {S: hashKey},
-          ":rangekey": {S: `${filter}_`}
-        } : 
-        {
-          ":hashkey": {S: hashKey} 
-        },
+      KeyConditionExpression: keyExpression,
+      FilterExpression: filterExpression == `` ? undefined : filterExpression,
+      ExpressionAttributeNames: expressionName,
+      ExpressionAttributeValues: expressionValue,
       ExclusiveStartKey: after ? 
         {
           [this.options.hashKey]: {S: after.hashKey},

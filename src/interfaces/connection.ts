@@ -1,3 +1,4 @@
+import { DeepPartial } from "relater"
 
 export interface ConnectionOptions {
   table: string
@@ -5,12 +6,12 @@ export interface ConnectionOptions {
   rangeKey?: string
 }
 
-export interface QueryOptions {
+export interface QueryOptions<P> {
   limit?: number
-  // offset?: number
   after?: DynamoCursor
   desc?: boolean
-  filter?: string | number | boolean
+  index?: string | number | boolean
+  filter?: DeepPartial<P>
 }
 
 export interface QueryResult<P> {

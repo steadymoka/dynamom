@@ -45,7 +45,7 @@ describe("testsuite of repository/create-options", () => {
         },
         {
           property: "type",
-          sourceKey: "type",
+          sourceKey: "type_tt",
           type: "string",
         },
         {
