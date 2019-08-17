@@ -1,17 +1,10 @@
-import { DeepPartial } from "relater"
-
-export interface ConnectionOptions {
-  table: string
-  hashKey?: string
-  rangeKey?: string
-}
 
 export interface QueryOptions<P> {
+  indexName?: string
+  hash: string | number
   limit?: number
   after?: DynamoCursor
   desc?: boolean
-  index?: string | number | boolean
-  filter?: DeepPartial<P>
 }
 
 export interface QueryResult<P> {
@@ -25,6 +18,6 @@ export interface DynamoNode<P extends {}> {
 }
 
 export interface DynamoCursor {
-  hashKey: string
-  rangeKey: string
+  hashKey: string | number
+  rangeKey?: string | number
 }

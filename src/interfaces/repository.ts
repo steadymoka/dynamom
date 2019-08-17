@@ -1,14 +1,19 @@
 import { Identifier, RelaterOptions, DeepPartial } from "relater"
 
 export interface RepositoryOptions<P> extends RelaterOptions<P> {
-  name: string
-  id: {
+  tableName: string
+  hashKey: {
+    property: Identifier
+    sourceKey: string
+  }
+  rangeKey: {
     property: Identifier
     sourceKey: string
   }
   indexes: {
     name: string
-    indexer(entity: P): string  
+    hashKey: string
+    rangeKey?: string
   }[]
   generatedValues: {
     property: Identifier
@@ -17,11 +22,15 @@ export interface RepositoryOptions<P> extends RelaterOptions<P> {
 }
 
 export interface RetrieveOptions<P> {
+  indexName?: string
+  hash: string | number
   limit?: number
   after?: string
-  index?: {name: string, filter?: string | number | boolean}
+  filter?: {
+    property: DeepPartial<P>
+    value: any
+  }
   desc?: boolean
-  filter?: DeepPartial<P>
 }
 
 export interface RetrieveResult<P> {

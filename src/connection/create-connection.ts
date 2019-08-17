@@ -1,13 +1,8 @@
 import { DynamoDB } from "aws-sdk"
-import { ConnectionOptions } from "../interfaces/connection"
 import { Connection } from "./connection"
 
 
-export interface CreateOptions extends ConnectionOptions {
-  dynamodb?: DynamoDB.Types.ClientConfiguration
-}
-
-export function createConnection(options: CreateOptions): Connection {
+export function createConnection(options: { dynamodb?: DynamoDB.Types.ClientConfiguration }): Connection {
   const ddb = new DynamoDB(options.dynamodb)
-  return new Connection(ddb, options)
+  return new Connection(ddb)
 }

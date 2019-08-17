@@ -8,8 +8,9 @@ export interface MetadataEntity {
 
 export interface MetadataIndex {
   target: any
+  property: Identifier
   name: string
-  indexer(entity: any): string
+  rangeKey?: string
 }
 
 export interface MetadataGeneratedValue {

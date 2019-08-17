@@ -2,20 +2,94 @@ import { DynamoDB } from "aws-sdk"
 import { exec } from "child_process"
 import { Connection } from "../lib/connection/connection"
 
-export async function getSafeConnection(table: string) {
+export async function getSafeConnection(tableName: string) {
   const ddb = await getDynamoClient()
-  
+  try { await ddb.deleteTable({ TableName: tableName }).promise() } catch (e) { console.log(e) }  
   try {
-    await ddb.deleteTable({ TableName: table }).promise()
+    if (tableName == "users") { await createUserTable(ddb) }
+    if (tableName == "categories") { await createCategoryTable(ddb) }
+    if (tableName == "comments") { await createCommentTable(ddb) }
+    if (tableName == "posts") { await createPostTable(ddb) }
   }
-  catch {
+  catch(e) {
+    console.log(e)
   }
+  return new Connection(ddb)
+}
 
-  const connection = new Connection(ddb, {table})
-  await connection.initialize({
+async function createUserTable(ddb: DynamoDB): Promise<any> {
+  await ddb.createTable({
+    TableName: "users",
+    KeySchema: [
+      { AttributeName: "user_id", KeyType: "HASH" },
+      { AttributeName: "username", KeyType: "RANGE" },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "user_id", AttributeType: "S" },
+      { AttributeName: "username", AttributeType: "S" },
+    ],
+    BillingMode: "PAY_PER_REQUEST"
+  }).promise()
+  return Promise.resolve(true)
+}
+
+async function createCategoryTable(ddb: DynamoDB): Promise<any> {
+  await ddb.createTable({
+    TableName: "categories",
+    KeySchema: [
+      { AttributeName: "hashKey", KeyType: "HASH" },
+      { AttributeName: "id", KeyType: "RANGE" },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "hashKey", AttributeType: "N" },
+      { AttributeName: "id", AttributeType: "S" },
+    ],
+    BillingMode: "PAY_PER_REQUEST"
+  }).promise()
+  return Promise.resolve(true)
+}
+
+async function createCommentTable(ddb: DynamoDB): Promise<any> {
+  await ddb.createTable({
+    TableName: "comments",
+    KeySchema: [
+      { AttributeName: "pk", KeyType: "HASH" },
+      { AttributeName: "type", KeyType: "RANGE" },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "pk", AttributeType: "N" },
+      { AttributeName: "type", AttributeType: "N" },
+    ],
+    BillingMode: "PAY_PER_REQUEST"
+  }).promise()
+  return Promise.resolve(true)
+}
+
+async function createPostTable(ddb: DynamoDB): Promise<any> {
+  await ddb.createTable({
+    TableName: "posts",
+    KeySchema: [
+      { AttributeName: "pk", KeyType: "HASH" },
+      { AttributeName: "id", KeyType: "RANGE" },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "pk", AttributeType: "S" },
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "user_id", AttributeType: "S" },
+    ],
     BillingMode: "PAY_PER_REQUEST",
-  })
-  return connection
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "index__user_id",
+        KeySchema: [
+          { AttributeName: 'user_id', KeyType: "HASH" },
+          { AttributeName: 'id', KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" }
+      },
+    ],
+  }).promise()
+  return Promise.resolve(true)
 }
 
 export async function getDynamoClient() {

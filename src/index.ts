@@ -33,7 +33,8 @@ export { createConnection } from "./connection/create-connection"
 
 export { Entity } from "./decorators/entity"
 export { Index } from "./decorators/index"
-export { Id } from "./decorators/id"
+export { HashKey } from "./decorators/hash-key"
+export { RangeKey } from "./decorators/range-key"
 export { GeneratedValue } from "./decorators/generated-value"
 
 export { columnBy } from "./indexer/column-by"

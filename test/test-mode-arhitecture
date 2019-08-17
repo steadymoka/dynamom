@@ -1,0 +1,41 @@
+
+Users
+- id
+- email
+- name
+- type
+
+Tags
+- id
+- name
+
+Posts
+- id
+- user_id
+- content
+- status
+
+Comments
+- id
+- user_id
+- post_id
+- comment_id
+- content
+
+Likes
+- id
+- user_id
+- post_id
+- type
+
+-----------------------------------
+-----------------------------------
+
+post_id(user_id) 로 Comments 모두 찾기
+post_id(user_id) 로 Comments 모두 찾기 + Post 의 status 로 필터링
+
+post_id(user_id) 로 Comments 모두 찾기
+post_id(user_id) 로 Comments 모두 찾기 + Like 의 type 로 필터링
+
+tag_id 로 Posts 모두 찾기
+

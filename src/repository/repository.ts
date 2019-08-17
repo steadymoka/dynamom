@@ -1,9 +1,8 @@
 import { DeepPartial, Transformer } from "relater"
-import uuid from "uuid/v4"
+import kuuid from "kuuid" // https://www.npmjs.com/package/kuuid
 import { Connection } from "../connection/connection"
 import { DynamoCursor } from "../interfaces/connection"
 import { RepositoryOptions, RetrieveOptions, RetrieveResult } from "../interfaces/repository"
-
 
 function encodeBase64(cursor: DynamoCursor): string {
   return Buffer.from(JSON.stringify(cursor)).toString("base64")
@@ -21,61 +20,65 @@ export class Repository<Entity> {
     this.transformer = new Transformer(options)
   }
 
-  public async retrieve({limit = 20, after, index, desc = false, filter}: RetrieveOptions<Entity> = {}): Promise<RetrieveResult<Entity>> {
+  public async create(attrs: DeepPartial<Entity>): Promise<Entity> {
+    const entity: any = { ...attrs }
+    for (const generatedValue of this.options.generatedValues) {
+      if (generatedValue.strategy === "uuid") {
+        // todo - time based sortable uuid
+        entity[generatedValue.property] = kuuid.idms()
+      }
+    }
+    Object.setPrototypeOf(entity, this.options.ctor.prototype)
+    const hashKey = entity[this.options.hashKey.property]
+    if (!hashKey) {
+      throw new Error("hashKey not defined!")
+    }
+    const rangeKey = entity[this.options.rangeKey.property]
+    if (!rangeKey) {
+      throw new Error("rangeKey not defined!")
+    }
+
+    await this.connection.putItems(this.options, [{
+      cursor: {
+        hashKey: entity[this.options.hashKey.property],
+        rangeKey: entity[this.options.rangeKey.property],
+      },
+      node: this.transformer.toPlain(entity as Entity)
+    }])
+    return entity
+  }
+
+  public async find(hashKey: string, rangeKey: any): Promise<Entity | undefined> {
+    const cursor = {
+      hashKey: hashKey,
+      rangeKey: rangeKey
+    }
+    const node = await this.connection.getItem(this.options, cursor)
+    if (node) {
+      return this.transformer.toEntity(node)
+    }
+    return
+  }
+
+  public async retrieve({ indexName, hash, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: "all" }): Promise<RetrieveResult<Entity>> {
     let endCursor: DynamoCursor | undefined
     const nodes: {cursor: string, node: Entity}[] = []
-    if (index) {
-      const indexes = await this.connection.query(`${this.options.name}__${index.name}`, {
-        limit,
-        after: after ? decodeBase64(after) : undefined,
-        desc,
-        index: index.filter
-      })
-      let result = await this.connection.getManyItems(indexes.nodes.map(({node}) => ({
-        hashKey: node.sourcetype,
-        rangeKey: node.sourceid,
-      })))
-      if (filter) {
-        filter = this.transformer.toPlain(filter)
 
-        result = result.filter(it => { 
-          let result = true
-          Object.getOwnPropertyNames(filter).forEach(key => {
-            result = result && (it[`${key}`] == filter![key as keyof Entity])
-          })
-          return result
-        })
-      }
-      endCursor = indexes.endCursor
-      indexes.nodes.forEach(({node, cursor}) => {
-        const foundNode = result.find((result) => {
-          return result[this.connection.options.hashKey] === node.sourcetype
-            && result[this.connection.options.rangeKey] === node.sourceid + "" 
-        })
-        if (foundNode) {
-          foundNode[this.options.id.sourceKey] = foundNode[this.connection.options.rangeKey]
-          nodes.push({
-            node: this.transformer.toEntity(foundNode),
-            cursor: encodeBase64(cursor),
-          })
-        }
+    const result = await this.connection.query(this.options, {
+      indexName,
+      hash,
+      limit,
+      after: after ? decodeBase64(after) : undefined,
+      desc,
+    })
+    endCursor = result.endCursor
+
+    result.nodes.forEach(({ node, cursor }) => {
+      nodes.push({
+        node: this.transformer.toEntity(node),
+        cursor: encodeBase64(cursor),
       })
-    } else {
-      const result = await this.connection.query(this.options.name, {
-        limit,
-        after: after ? decodeBase64(after) : undefined,
-        desc,
-        filter: filter ? this.transformer.toPlain(filter) : undefined
-      })
-      endCursor = result.endCursor
-      result.nodes.forEach(({node, cursor}) => {
-        node[this.options.id.sourceKey] = node[this.connection.options.rangeKey]
-        nodes.push({
-          node: this.transformer.toEntity(node),
-          cursor: encodeBase64(cursor),
-        })
-      })
-    }
+    })
 
     if (endCursor) {
       return {
@@ -88,100 +91,41 @@ export class Repository<Entity> {
     }
   }
 
-  public async find(id: string): Promise<Entity | undefined> {
-    const node = await this.connection.getItem(this.options.name, id)
-    if (node) {
-      node[this.options.id.sourceKey] = id
-      return this.transformer.toEntity(node)
-    }
-    return
-  }
-
-  public async create(attrs: DeepPartial<Entity>): Promise<Entity> {
-    const entity: any = {...attrs}
-    for (const generatedValue of this.options.generatedValues) {
-      if (generatedValue.strategy === "uuid") {
-        entity[generatedValue.property] = uuid()
-      }
-    }
-    Object.setPrototypeOf(entity, this.options.ctor.prototype)
-    const id = entity[this.options.id.property]
-    if (!id) {
-      throw new Error("id not defined!")
-    }
-    await this.connection.putItems([
-      {
-        cursor: {
-          hashKey: this.options.name,
-          rangeKey: id,
-        },
-        node: this.transformer.toPlain(entity as Entity),
-      },
-      ...this.options.indexes.map((index) => {
-        return {
-          cursor: {
-            hashKey: `${this.options.name}__${index.name}`,
-            rangeKey: `${index.indexer(entity)}__${id}`,
-          },
-          node: {
-            sourcetype: this.options.name,
-            sourceid: id,
-          },
-        }
-      }),
-    ])
-    return entity
-  }
 
   public async persist(entity: Entity): Promise<void> {
-    const id = (entity as any)[this.options.id.property]
-    if (!id) {
-      throw new Error("id not defined!")
+    const hashKey = (entity as any)[this.options.hashKey.property]
+    if (!hashKey) {
+      throw new Error("hashKey not defined!")
+    }
+    const rangeKey = (entity as any)[this.options.rangeKey.property]
+    if (!rangeKey) {
+      throw new Error("rangeKey not defined!")
     }
 
-    // @todo remove legacy index
-    // await this.connection.deleteManyItems([])
-
-    await this.connection.putItems([
-      {
-        cursor: {
-          hashKey: this.options.name,
-          rangeKey: id,
-        },
-        node: this.transformer.toPlain(entity),
+    await this.connection.putItems(this.options, [{
+      cursor: {
+        hashKey: (entity as any)[this.options.hashKey.property],
+        rangeKey: (entity as any)[this.options.rangeKey.property],
       },
-      ...this.options.indexes.map((index) => {
-        return {
-          cursor: {
-            hashKey: `${this.options.name}__${index.name}`,
-            rangeKey: `${index.indexer(entity)}__${id}`,
-          },
-          node: {
-            sourcetype: this.options.name,
-            sourceid: id,
-          },
-        }
-      }),
-    ])
+      node: this.transformer.toPlain(entity as Entity)
+    }])
   }
 
   public async remove(entity: Entity): Promise<void> {
-    const id = (entity as any)[this.options.id.property]
-    if (!id) {
-      throw new Error("id not defined!")
+    const hashKey = (entity as any)[this.options.hashKey.property]
+    if (!hashKey) {
+      throw new Error("hashKey not defined!")
     }
-
-    await this.connection.deleteManyItems([
+    const rangeKey = (entity as any)[this.options.rangeKey.property]
+    if (!rangeKey) {
+      throw new Error("rangeKey not defined!")
+    }
+    await this.connection.deleteManyItems(this.options, [
       {
-        hashKey: this.options.name,
-        rangeKey: id,
+        hashKey: (entity as any)[this.options.hashKey.property],
+        rangeKey: (entity as any)[this.options.rangeKey.property],
       },
-      ...this.options.indexes.map((index) => {
-        return {
-          hashKey: `${this.options.name}__${index.name}`,
-          rangeKey: `${index.indexer(entity)}__${id}`,
-        }
-      }),
     ])
   }
+
 }
