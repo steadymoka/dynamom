@@ -1,8 +1,9 @@
 import { DeepPartial, Transformer } from "relater"
-import kuuid from "kuuid" // https://www.npmjs.com/package/kuuid
 import { Connection } from "../connection/connection"
 import { DynamoCursor } from "../interfaces/connection"
 import { RepositoryOptions, RetrieveOptions, RetrieveResult } from "../interfaces/repository"
+import uuid from "uuid/v4"
+import kuuid from "kuuid"
 
 function encodeBase64(cursor: DynamoCursor): string {
   return Buffer.from(JSON.stringify(cursor)).toString("base64")
@@ -24,8 +25,18 @@ export class Repository<Entity> {
     const entity: any = { ...attrs }
     for (const generatedValue of this.options.generatedValues) {
       if (generatedValue.strategy === "uuid") {
-        // todo - time based sortable uuid
+        entity[generatedValue.property] = uuid()
+      }
+      if (generatedValue.strategy === "kuuid") {
         entity[generatedValue.property] = kuuid.idms()
+      }
+    }
+    for (const generatedIndex of this.options.generatedIndexes) {
+      if (generatedIndex.indexHash) {
+        entity[generatedIndex.property] = generatedIndex.indexHash
+      }
+      if (generatedIndex.targets) {
+        entity[generatedIndex.property] = `${generatedIndex.targets!.map((item: any) => entity[`${item}`]).join("_")}_${new Date().getTime()}`
       }
     }
     Object.setPrototypeOf(entity, this.options.ctor.prototype)
@@ -33,22 +44,18 @@ export class Repository<Entity> {
     if (!hashKey) {
       throw new Error("hashKey not defined!")
     }
-    const rangeKey = entity[this.options.rangeKey.property]
-    if (!rangeKey) {
-      throw new Error("rangeKey not defined!")
-    }
 
     await this.connection.putItems(this.options, [{
       cursor: {
         hashKey: entity[this.options.hashKey.property],
-        rangeKey: entity[this.options.rangeKey.property],
+        rangeKey: this.options.rangeKey ? entity[this.options.rangeKey.property] : undefined,
       },
       node: this.transformer.toPlain(entity as Entity)
     }])
     return entity
   }
 
-  public async find(hashKey: string, rangeKey: any): Promise<Entity | undefined> {
+  public async find(hashKey: string, rangeKey?: any): Promise<Entity | undefined> {
     const cursor = {
       hashKey: hashKey,
       rangeKey: rangeKey
@@ -60,13 +67,14 @@ export class Repository<Entity> {
     return
   }
 
-  public async retrieve({ indexName, hash, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: "all" }): Promise<RetrieveResult<Entity>> {
+  public async retrieve({ indexName, hash, range, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: "all" }): Promise<RetrieveResult<Entity>> {
     let endCursor: DynamoCursor | undefined
     const nodes: {cursor: string, node: Entity}[] = []
 
     const result = await this.connection.query(this.options, {
       indexName,
       hash,
+      range,
       limit,
       after: after ? decodeBase64(after) : undefined,
       desc,
@@ -97,16 +105,15 @@ export class Repository<Entity> {
     if (!hashKey) {
       throw new Error("hashKey not defined!")
     }
-    const rangeKey = (entity as any)[this.options.rangeKey.property]
-    if (!rangeKey) {
-      throw new Error("rangeKey not defined!")
-    }
-
     await this.connection.putItems(this.options, [{
-      cursor: {
-        hashKey: (entity as any)[this.options.hashKey.property],
-        rangeKey: (entity as any)[this.options.rangeKey.property],
-      },
+      cursor: this.options.rangeKey 
+        ? {
+          hashKey: (entity as any)[this.options.hashKey.property],
+          rangeKey: (entity as any)[this.options.rangeKey.property],
+        }
+        : {
+          hashKey: (entity as any)[this.options.hashKey.property],
+        },
       node: this.transformer.toPlain(entity as Entity)
     }])
   }
@@ -116,15 +123,15 @@ export class Repository<Entity> {
     if (!hashKey) {
       throw new Error("hashKey not defined!")
     }
-    const rangeKey = (entity as any)[this.options.rangeKey.property]
-    if (!rangeKey) {
-      throw new Error("rangeKey not defined!")
-    }
     await this.connection.deleteManyItems(this.options, [
-      {
-        hashKey: (entity as any)[this.options.hashKey.property],
-        rangeKey: (entity as any)[this.options.rangeKey.property],
-      },
+      this.options.rangeKey
+        ? {
+          hashKey: (entity as any)[this.options.hashKey.property],
+          rangeKey: (entity as any)[this.options.rangeKey.property],
+        }
+        : {
+          hashKey: (entity as any)[this.options.hashKey.property],
+        },
     ])
   }
 

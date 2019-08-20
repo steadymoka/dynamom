@@ -1,6 +1,6 @@
 import { createOptions } from "../../lib/repository/create-options"
 import { User } from "../stubs/user"
-import { Post } from "../stubs/post";
+import { Post } from "../stubs/post"
 
 
 describe("testsuite of repository/create-options", () => {
@@ -8,6 +8,7 @@ describe("testsuite of repository/create-options", () => {
     expect(createOptions(User)).toEqual({
       tableName: "users",
       ctor: User,
+      generatedIndexes: [],
       generatedValues: [
         {
           property: "id",
@@ -26,6 +27,7 @@ describe("testsuite of repository/create-options", () => {
         {
           name: "index__email",
           hashKey: "email",
+          rangeKey: undefined,
         },
         {
           name: "index__createdAt",
@@ -68,10 +70,11 @@ describe("testsuite of repository/create-options", () => {
     expect(createOptions(Post)).toEqual({
       tableName: "posts",
       ctor: Post,
+      generatedIndexes: [],
       generatedValues: [
         {
           property: "id",
-          strategy: "uuid",
+          strategy: "kuuid",
         }
       ],
       hashKey: {

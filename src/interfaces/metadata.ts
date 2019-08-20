@@ -1,4 +1,4 @@
-import { Identifier } from "relater"
+import { Identifier, MaybeArray } from "relater"
 
 
 export interface MetadataEntity {
@@ -11,6 +11,13 @@ export interface MetadataIndex {
   property: Identifier
   name: string
   rangeKey?: string
+}
+
+export interface MetadataGeneratedIndex {
+  target: any
+  property: Identifier
+  indexHash?: string
+  targets?: MaybeArray<any>
 }
 
 export interface MetadataGeneratedValue {

@@ -4,16 +4,16 @@ import { Column, Index, Entity, GeneratedValue, HashKey, RangeKey } from "../../
 @Entity({name: "comments"})
 export class Comment {
 
-  @HashKey()
   @Column()
+  @HashKey()
   public pk!: number
 
-  @RangeKey()
   @Column()
+  @RangeKey()
   public type!: number
 
-  @Index()
   @Column({ name: "user_id" })
+  @Index()
   public userId!: string
 
   @Column()

@@ -36,6 +36,7 @@ export { Index } from "./decorators/index"
 export { HashKey } from "./decorators/hash-key"
 export { RangeKey } from "./decorators/range-key"
 export { GeneratedValue } from "./decorators/generated-value"
+export { GeneratedIndex } from "./decorators/generated-index"
 
 export { columnBy } from "./indexer/column-by"
 

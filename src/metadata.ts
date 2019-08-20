@@ -1,8 +1,9 @@
 import {
   MetadataEntity,
+  MetadataGeneratedIndex,
   MetadataGeneratedValue,
   MetadataId,
-  MetadataIndex
+  MetadataIndex,
 } from "./interfaces/metadata"
 
 
@@ -10,4 +11,5 @@ export const metadataEntities = new Map<any, MetadataEntity>()
 export const metadataIndexes = new Map<any, MetadataIndex[]>()
 export const metadataHashKeys = new Map<any, MetadataId>()
 export const metadataRangeKeys = new Map<any, MetadataId>()
+export const metadataGeneratedIndexes = new Map<any, MetadataGeneratedIndex[]>()
 export const metadataGeneratedValues = new Map<any, MetadataGeneratedValue[]>()

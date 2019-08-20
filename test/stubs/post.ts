@@ -4,17 +4,17 @@ import { Column, Index, Entity, GeneratedValue, HashKey, RangeKey } from "../../
 @Entity({name: "posts"})
 export class Post {
 
-  @HashKey()
   @Column()
+  @HashKey()
   public pk!: string
 
-  @RangeKey()
-  @GeneratedValue({ strategy: "uuid" })
   @Column()
+  @GeneratedValue({ strategy: "kuuid" })
+  @RangeKey()
   public id!: string
 
-  @Index({ name: "index__user_id", rangeKey: "id" })
   @Column({ name: "user_id" })
+  @Index({ name: "index__user_id", rangeKey: "id" })
   public userId!: string
 
   @Column()

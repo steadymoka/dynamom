@@ -4,16 +4,15 @@ import { Column, Index, Entity, GeneratedValue, HashKey, RangeKey } from "../../
 @Entity({name: "categories"})
 export class Category {
 
-  @HashKey()
   @Column({ name: "hashKey" })
+  @HashKey()
   public pk!: number
 
-  @RangeKey()
-  @GeneratedValue({ strategy: "uuid" })
   @Column()
+  @GeneratedValue({ strategy: "kuuid" })
+  @RangeKey()
   public id!: string
 
-  @Index()
   @Column({ name: "user_id" })
   public userId!: string
 

@@ -2,6 +2,7 @@
 export interface QueryOptions<P> {
   indexName?: string
   hash: string | number
+  range?: string | number
   limit?: number
   after?: DynamoCursor
   desc?: boolean

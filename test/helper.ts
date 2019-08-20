@@ -4,12 +4,13 @@ import { Connection } from "../lib/connection/connection"
 
 export async function getSafeConnection(tableName: string) {
   const ddb = await getDynamoClient()
-  try { await ddb.deleteTable({ TableName: tableName }).promise() } catch (e) { console.log(e) }  
+  try { await ddb.deleteTable({ TableName: tableName }).promise() } catch (e) { }  
   try {
     if (tableName == "users") { await createUserTable(ddb) }
     if (tableName == "categories") { await createCategoryTable(ddb) }
     if (tableName == "comments") { await createCommentTable(ddb) }
     if (tableName == "posts") { await createPostTable(ddb) }
+    if (tableName == "movies") { await createMovieTable(ddb) }
   }
   catch(e) {
     console.log(e)
@@ -84,6 +85,42 @@ async function createPostTable(ddb: DynamoDB): Promise<any> {
         KeySchema: [
           { AttributeName: 'user_id', KeyType: "HASH" },
           { AttributeName: 'id', KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" }
+      },
+    ],
+  }).promise()
+  return Promise.resolve(true)
+}
+
+async function createMovieTable(ddb: DynamoDB): Promise<any> {
+  await ddb.createTable({
+    TableName: "movies",
+    KeySchema: [
+      { AttributeName: "id", KeyType: "HASH" },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: "id", AttributeType: "S" },
+      { AttributeName: "user_id", AttributeType: "S" },
+      { AttributeName: "create_at", AttributeType: "N" },
+      { AttributeName: "index_key", AttributeType: "S" },
+      { AttributeName: "user_id__title", AttributeType: "S" },
+    ],
+    BillingMode: "PAY_PER_REQUEST",
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: "index__user_id",
+        KeySchema: [
+          { AttributeName: 'user_id', KeyType: "HASH" },
+          { AttributeName: 'create_at', KeyType: "RANGE" },
+        ],
+        Projection: { ProjectionType: "ALL" }
+      },
+      {
+        IndexName: "index__user_id_title",
+        KeySchema: [
+          { AttributeName: 'index_key', KeyType: "HASH" },
+          { AttributeName: 'user_id__title', KeyType: "RANGE" },
         ],
         Projection: { ProjectionType: "ALL" }
       },
