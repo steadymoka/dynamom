@@ -14,7 +14,7 @@ export class Post {
   public id!: string
 
   @Column({ name: "user_id" })
-  @Index({ name: "index__user_id", rangeKey: "id" })
+  @Index("index__user_id", { rangeKeys: ["id"] })
   public userId!: string
 
   @Column()

@@ -36,15 +36,15 @@ export function createOptions<Entity>(ctor: ConstructType<Entity>): RepositoryOp
       property: rangeKey!.property,
       sourceKey: rangeKeyColumn.sourceKey,
     } : undefined,
-    indexes: (metadataIndexes.get(ctor) || []).map((value) => {
-      const indexColumn = relaterOptions.columns.find((column) => column.property === value.property)
+    indexes: (metadataIndexes.get(ctor) || []).map(({ property, name, rangeKeys }) => {
+      const indexColumn = relaterOptions.columns.find((column) => column.property === property)
       if (!indexColumn) {
         throw new Error("not defined rangeKey column")
       }
       return {
-        name: value.name,
+        name: name,
         hashKey: indexColumn.sourceKey,
-        rangeKey: value.rangeKey
+        rangeKeys,
       }
     }),
     generatedIndexes: (metadataGeneratedIndexes.get(ctor) || []).map((value) => ({

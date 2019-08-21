@@ -10,7 +10,7 @@ export class Movie {
   public id!: string
 
   @Column()
-  @Index({ name: "index__user_id", rangeKey: "created_at" })
+  @Index("index__user_id", { rangeKeys: ["created_at"] })
   public user_id!: string
 
   @Column()
@@ -20,14 +20,13 @@ export class Movie {
   public description!: string
 
   @Column({ name: "index_key" })
-  @Index({ name: "index__user_id_title", rangeKey: "user_id__title" })
+  @Index("index__user_id_title", { rangeKeys: ["user_id", "title"] })
   @GeneratedIndex({ indexHash: "all" })
   public indexKey!: string
 
-  @Column({ name: "user_id__title" })
-  @GeneratedIndex({ targets: ["user_id", "title"] })
-  public userId_title!: string
-
+  @Column()
+  public user_id__title!: string
+  
   @Column({ name: "created_at"})
   public createdAt!: number
 

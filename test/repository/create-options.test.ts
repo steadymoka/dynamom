@@ -27,12 +27,12 @@ describe("testsuite of repository/create-options", () => {
         {
           name: "index__email",
           hashKey: "email",
-          rangeKey: undefined,
+          rangeKeys: [],
         },
         {
-          name: "index__createdAt",
+          name: "index__created_at",
           hashKey: "created_at",
-          rangeKey: "user_id"
+          rangeKeys: ["user_id"]
         }
       ],
       columns: [
@@ -89,7 +89,7 @@ describe("testsuite of repository/create-options", () => {
         {
           name: "index__user_id",
           hashKey: "user_id",
-          rangeKey: "id"
+          rangeKeys: ["id"]
         },
       ],
       columns: [

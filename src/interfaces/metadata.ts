@@ -10,7 +10,7 @@ export interface MetadataIndex {
   target: any
   property: Identifier
   name: string
-  rangeKey?: string
+  rangeKeys: string[]
 }
 
 export interface MetadataGeneratedIndex {

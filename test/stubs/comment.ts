@@ -13,7 +13,7 @@ export class Comment {
   public type!: number
 
   @Column({ name: "user_id" })
-  @Index()
+  @Index("index__user_id", { rangeKeys: [] })
   public userId!: string
 
   @Column()

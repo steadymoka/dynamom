@@ -14,8 +14,7 @@ export interface GeneratedValueDecoratorOptions {
 }
 
 export interface IndexDecoratorOptions {
-  name?: string
-  rangeKey?: string
+  rangeKeys: string[]
 }
 
 export type EntityDecoratorFactory = (options?: EntityDecoratorOptions) => ClassDecorator
@@ -26,4 +25,4 @@ export type GeneratedValueDecoratorFactory = (options?: GeneratedValueDecoratorO
 
 export type GeneratedIndexDecoratorFactory = (options?: GeneratedIndexDecoratorOptions) => PropertyDecorator
 
-export type IndexDecoratorFactory = (options?: IndexDecoratorOptions) => PropertyDecorator
+export type IndexDecoratorFactory = (name: string, options?: IndexDecoratorOptions) => PropertyDecorator

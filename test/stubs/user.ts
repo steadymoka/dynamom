@@ -13,14 +13,14 @@ export class User {
   @Column()
   public username!: string
 
-  @Index({name: "index__email"})
+  @Index("index__email", { rangeKeys: [] })
   @Column()
   public email!: string
 
   @Column({name: "type_tt"})
   public type!: string
 
-  @Index({ rangeKey: "user_id" })
+  @Index("index__created_at", { rangeKeys: ["user_id"] })
   @Column({name: "created_at"})
   public createdAt!: number
   

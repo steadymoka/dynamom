@@ -117,7 +117,7 @@ describe("testsuite of repository/repository", () => {
       description: fakeMovie.description,
       createdAt: fakeMovie.createdAt,
       indexKey: "all",
-      userId_title: movie.userId_title
+      user_id__title: movie.user_id__title
     })
     expect(movie).toBeInstanceOf(Movie)
 
@@ -135,7 +135,7 @@ describe("testsuite of repository/repository", () => {
       description: fakeMovie.description,
       created_at: fakeMovie.createdAt,
       index_key: "all",
-      user_id__title: movie.userId_title
+      user_id__title: movie.user_id__title
     }).toEqual(fromDynamoAttributeMap(result.Item!))
   })
 
@@ -176,7 +176,7 @@ describe("testsuite of repository/repository", () => {
       description: fakeMovie.description,
       createdAt: fakeMovie.createdAt,
       indexKey: "all",
-      userId_title: movie.userId_title
+      user_id__title: movie.user_id__title
     })
     expect(foundMovie).toBeInstanceOf(Movie)
   })
@@ -263,7 +263,7 @@ describe("testsuite of repository/repository", () => {
   })
 
 
-  it("test retrieve by index", async () => {
+  it("test retrieve by INDEX", async () => {
     const connection = await getSafeConnection("posts")
     const repository = new Repository(connection, createOptions(Post))
 
@@ -323,15 +323,14 @@ describe("testsuite of repository/repository", () => {
     const sortedMovies = movies.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
     const filteredMovies = sortedMovies.filter(({ user_id }) => user_id == "moka")
 
-    const result1 = await repository.retrieve({ indexName: "index__user_id_title", hash: "all", range: `moka_title!!`, limit: 3, desc: true })
-    // const result2 = await repository.retrieve({ indexName: "index__user_id_title", hash: "all", range: `${movies[0].user_id}`, after: result1.endCursor, desc: true })
+    const result1 = await repository.retrieve({ indexName: "index__user_id_title", hash: "all", range: `moka__title!!`, limit: 3, desc: true })
     
     expect(result1).toEqual({
       nodes: filteredMovies.slice(0, 3).map(movie => ({
-        cursor: encodeBase64({ hashKey: "all", rangeKey: movie.userId_title }),
+        cursor: encodeBase64({ hashKey: "all", rangeKey: movie.user_id__title }),
         node: movie,
       })),
-      endCursor: encodeBase64({ hashKey: "all", rangeKey: filteredMovies[2].userId_title }),
+      endCursor: encodeBase64({ hashKey: "all", rangeKey: filteredMovies[2].user_id__title }),
     })
   })
 

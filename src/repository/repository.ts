@@ -2,6 +2,7 @@ import { DeepPartial, Transformer } from "relater"
 import { Connection } from "../connection/connection"
 import { DynamoCursor } from "../interfaces/connection"
 import { RepositoryOptions, RetrieveOptions, RetrieveResult } from "../interfaces/repository"
+import { columnBy } from "../indexer/column-by"
 import uuid from "uuid/v4"
 import kuuid from "kuuid"
 
@@ -35,10 +36,13 @@ export class Repository<Entity> {
       if (generatedIndex.indexHash) {
         entity[generatedIndex.property] = generatedIndex.indexHash
       }
-      if (generatedIndex.targets) {
-        entity[generatedIndex.property] = `${generatedIndex.targets!.map((item: any) => entity[`${item}`]).join("_")}_${new Date().getTime()}`
+    }
+    for (const index of this.options.indexes) {
+      if (index.rangeKeys.length > 1) {
+        entity[index.rangeKeys.join("__")] = `${columnBy<Entity>(index.rangeKeys as any)(this.transformer.toPlain(entity as Entity))}__${new Date().getTime()}`
       }
     }
+
     Object.setPrototypeOf(entity, this.options.ctor.prototype)
     const hashKey = entity[this.options.hashKey.property]
     if (!hashKey) {

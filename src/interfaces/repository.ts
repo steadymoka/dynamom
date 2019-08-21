@@ -13,7 +13,7 @@ export interface RepositoryOptions<P> extends RelaterOptions<P> {
   indexes: {
     name: string
     hashKey: string
-    rangeKey?: string
+    rangeKeys: string[]
   }[]
   generatedIndexes: {
     property: Identifier
