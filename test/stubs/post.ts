@@ -2,6 +2,7 @@ import { Column, Index, Entity, GeneratedValue, HashKey, RangeKey } from "../../
 
 
 @Entity({name: "posts"})
+@Index<Post>({ hash: ["userId"], range: ["id"] })
 export class Post {
 
   @Column()
@@ -9,12 +10,10 @@ export class Post {
   public pk!: string
 
   @Column()
-  @GeneratedValue({ strategy: "kuuid" })
-  @RangeKey()
+  @RangeKey() @GeneratedValue({ strategy: "kuuid" })
   public id!: string
 
   @Column({ name: "user_id" })
-  @Index("index__user_id", { rangeKeys: ["id"] })
   public userId!: string
 
   @Column()

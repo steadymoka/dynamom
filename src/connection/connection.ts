@@ -56,7 +56,7 @@ export class Connection {
       this.client.batchWriteItem({
         RequestItems: {
           [`${options.tableName}`]: writeRequests,
-        }
+        },
       }, (err, result) => {
         if (err) {
           return reject(err)
@@ -78,6 +78,31 @@ export class Connection {
       })
     })
   }
+
+  public putItem<P = any>(options: RepositoryOptions<P>, row: DynamoNode<P>): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      this.client.putItem({
+        TableName: options.tableName,
+        ReturnValues: "ALL_OLD",
+        Item: options.rangeKey ? 
+          {
+            [options.hashKey.sourceKey]: toDynamoAttribute(row.cursor.hashKey),
+            [options.rangeKey.sourceKey]: toDynamoAttribute(row.cursor.rangeKey),
+            ...toDynamoAttributeMap(row.node),
+          } : 
+          {
+            [options.hashKey.sourceKey]: toDynamoAttribute(row.cursor.hashKey),
+            ...toDynamoAttributeMap(row.node),
+          },
+      }, (err) => {
+        if (err) {
+          return reject(err)
+        }
+        resolve(true)
+      })
+    })
+  }
+
 
   public getItem<P = any>(options: RepositoryOptions<P>, cursor: DynamoCursor): Promise<any | null> {
     return new Promise((resolve, reject) => this.client.getItem({
@@ -101,10 +126,30 @@ export class Connection {
 
   public query<P = any>(options: RepositoryOptions<P>, { indexName, hash, range, limit = 20, after, desc = false }: QueryOptions<P> = { hash: "all" }): Promise<QueryResult<P>> {
     const hashKey = indexName ?
-      options.indexes.find(({ name }) => name == indexName)!.hashKey :
+      (() => {
+        const indexHash = options.indexes.find(({ name }) => name == indexName)!.hashKey
+        if (indexHash.generated) {
+          return indexHash.generated.key!
+        }
+        else {
+          return indexHash.sourceKey!
+        }
+      })() :
       options.hashKey.sourceKey
     let rangeKey = indexName ? 
-      options.indexes.find(({ name }) => name == indexName)!.rangeKeys.join("__") || undefined :
+      (() => {
+        const indexRange = options.indexes.find(({ name }) => name == indexName)!.rangeKey
+        if (!indexRange) {
+          return undefined
+        }
+
+        if (indexRange.generated) {
+          return indexRange.generated.key
+        }
+        else {
+          return indexRange.sourceKey
+        }
+      })() :
       options.rangeKey ? options.rangeKey.sourceKey : undefined
 
     return new Promise((resolve, reject) => this.client.query({
@@ -125,7 +170,7 @@ export class Connection {
       ExpressionAttributeValues: range ?
         {
           ":hashkey": typeof hash == "string" ? { S: hash } : { N: `${hash}` },
-          ":rangekey": { S: `${range}_` }
+          ":rangekey": { S: `${range}__` }
         } : 
         {
           ":hashkey": typeof hash == "string" ? { S: hash } : { N: `${hash}` }

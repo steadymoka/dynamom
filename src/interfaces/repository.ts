@@ -1,4 +1,4 @@
-import { Identifier, RelaterOptions, DeepPartial, MaybeArray } from "relater"
+import { Identifier, RelaterOptions, DeepPartial } from "relater"
 
 export interface RepositoryOptions<P> extends RelaterOptions<P> {
   tableName: string
@@ -12,16 +12,28 @@ export interface RepositoryOptions<P> extends RelaterOptions<P> {
   }
   indexes: {
     name: string
-    hashKey: string
-    rangeKeys: string[]
-  }[]
-  generatedIndexes: {
-    property: Identifier
-    indexHash?: string
-    targets?: MaybeArray<any>
+    hashKey: {
+      property?: Identifier
+      sourceKey?: string
+      generated?: {
+        key: string
+        properties: string[]
+        sourceKeys: string[]
+      }
+    }
+    rangeKey?: {
+      property?: Identifier
+      sourceKey?: string
+      generated?: {
+        key: string
+        properties: string[]
+        sourceKeys: string[]
+      }
+    }
   }[]
   generatedValues: {
     property: Identifier
+    sourceKey: string
     strategy: string
   }[]
 }

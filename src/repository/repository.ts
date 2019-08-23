@@ -24,39 +24,40 @@ export class Repository<Entity> {
 
   public async create(attrs: DeepPartial<Entity>): Promise<Entity> {
     const entity: any = { ...attrs }
+    Object.setPrototypeOf(entity, this.options.ctor.prototype)
+    const node = this.transformer.toPlain(entity as Entity)
+
     for (const generatedValue of this.options.generatedValues) {
       if (generatedValue.strategy === "uuid") {
-        entity[generatedValue.property] = uuid()
+        node[generatedValue.sourceKey] = uuid()
       }
       if (generatedValue.strategy === "kuuid") {
-        entity[generatedValue.property] = kuuid.idms()
-      }
-    }
-    for (const generatedIndex of this.options.generatedIndexes) {
-      if (generatedIndex.indexHash) {
-        entity[generatedIndex.property] = generatedIndex.indexHash
+        node[generatedValue.sourceKey] = kuuid.idms()
       }
     }
     for (const index of this.options.indexes) {
-      if (index.rangeKeys.length > 1) {
-        entity[index.rangeKeys.join("__")] = `${columnBy<Entity>(index.rangeKeys as any)(this.transformer.toPlain(entity as Entity))}__${new Date().getTime()}`
+      if (index.hashKey.generated) {
+        node[index.hashKey.generated.key] = `${columnBy<Entity>(index.hashKey.generated.properties as any)(entity)}}`
+      }
+
+      if (index.rangeKey && index.rangeKey.generated) {
+        node[index.rangeKey.generated.key] = `${columnBy<Entity>(index.rangeKey.generated.properties as any)(entity)}__${new Date().getTime()}`
       }
     }
 
-    Object.setPrototypeOf(entity, this.options.ctor.prototype)
-    const hashKey = entity[this.options.hashKey.property]
+    const hashKey = node[this.options.hashKey.sourceKey]
     if (!hashKey) {
       throw new Error("hashKey not defined!")
     }
 
     await this.connection.putItems(this.options, [{
       cursor: {
-        hashKey: entity[this.options.hashKey.property],
-        rangeKey: this.options.rangeKey ? entity[this.options.rangeKey.property] : undefined,
+        hashKey: node[this.options.hashKey.sourceKey],
+        rangeKey: this.options.rangeKey ? node[this.options.rangeKey.sourceKey] : undefined,
       },
-      node: this.transformer.toPlain(entity as Entity)
+      node,
     }])
-    return entity
+    return this.transformer.toEntity(node)
   }
 
   public async find(hashKey: string, rangeKey?: any): Promise<Entity | undefined> {
@@ -109,7 +110,7 @@ export class Repository<Entity> {
     if (!hashKey) {
       throw new Error("hashKey not defined!")
     }
-    await this.connection.putItems(this.options, [{
+    await this.connection.putItem(this.options, {
       cursor: this.options.rangeKey 
         ? {
           hashKey: (entity as any)[this.options.hashKey.property],
@@ -119,7 +120,7 @@ export class Repository<Entity> {
           hashKey: (entity as any)[this.options.hashKey.property],
         },
       node: this.transformer.toPlain(entity as Entity)
-    }])
+    })
   }
 
   public async remove(entity: Entity): Promise<void> {

@@ -1,7 +1,8 @@
-import { Column, Index, Entity, GeneratedValue, HashKey, RangeKey } from "../../lib"
+import { Column, Index, Entity, HashKey, RangeKey } from "../../lib"
 
 
 @Entity({name: "comments"})
+@Index({ hash: ["userId"], range: [] })
 export class Comment {
 
   @Column()
@@ -13,7 +14,6 @@ export class Comment {
   public type!: number
 
   @Column({ name: "user_id" })
-  @Index("index__user_id", { rangeKeys: [] })
   public userId!: string
 
   @Column()

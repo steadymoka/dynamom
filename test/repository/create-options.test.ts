@@ -8,10 +8,10 @@ describe("testsuite of repository/create-options", () => {
     expect(createOptions(User)).toEqual({
       tableName: "users",
       ctor: User,
-      generatedIndexes: [],
       generatedValues: [
         {
           property: "id",
+          sourceKey: "user_id",
           strategy: "uuid",
         }
       ],
@@ -25,15 +25,27 @@ describe("testsuite of repository/create-options", () => {
       },
       indexes: [
         {
-          name: "index__email",
-          hashKey: "email",
-          rangeKeys: [],
+          name: "index__created_at__user_id",
+          hashKey: {
+            property: "createdAt",
+            sourceKey: "created_at",
+            generated: undefined,
+          },
+          rangeKey: {
+            property: "id",
+            sourceKey: "user_id",
+            generated: undefined,
+          },
         },
         {
-          name: "index__created_at",
-          hashKey: "created_at",
-          rangeKeys: ["user_id"]
-        }
+          name: "index__email",
+          hashKey: {
+            property: "email",
+            sourceKey: "email",
+            generated: undefined,
+          },
+          rangeKey: undefined,
+        },
       ],
       columns: [
         {
@@ -70,10 +82,10 @@ describe("testsuite of repository/create-options", () => {
     expect(createOptions(Post)).toEqual({
       tableName: "posts",
       ctor: Post,
-      generatedIndexes: [],
       generatedValues: [
         {
           property: "id",
+          sourceKey: "id",
           strategy: "kuuid",
         }
       ],
@@ -87,9 +99,17 @@ describe("testsuite of repository/create-options", () => {
       },
       indexes: [
         {
-          name: "index__user_id",
-          hashKey: "user_id",
-          rangeKeys: ["id"]
+          name: "index__user_id__id",
+          hashKey: {
+            property: "userId",
+            sourceKey: "user_id",
+            generated: undefined
+          },
+          rangeKey: {
+            property: "id",
+            sourceKey: "id",
+            generated: undefined,
+          }
         },
       ],
       columns: [

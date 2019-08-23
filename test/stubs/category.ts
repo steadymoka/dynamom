@@ -9,8 +9,7 @@ export class Category {
   public pk!: number
 
   @Column()
-  @GeneratedValue({ strategy: "kuuid" })
-  @RangeKey()
+  @RangeKey() @GeneratedValue({ strategy: "kuuid" })
   public id!: string
 
   @Column({ name: "user_id" })

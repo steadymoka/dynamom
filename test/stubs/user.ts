@@ -2,25 +2,24 @@ import { Column, Index, Entity, GeneratedValue, HashKey, RangeKey } from "../../
 
 
 @Entity({name: "users"})
+@Index<User>({ hash: ["email"], range: [] })
+@Index<User>({ hash: ["createdAt"], range: ["id"] })
 export class User {
 
-  @HashKey()
-  @GeneratedValue({strategy: "uuid"})
   @Column({name: "user_id"})
+  @HashKey() @GeneratedValue({strategy: "uuid"})
   public id!: string
 
-  @RangeKey()
   @Column()
+  @RangeKey()
   public username!: string
 
-  @Index("index__email", { rangeKeys: [] })
   @Column()
   public email!: string
 
   @Column({name: "type_tt"})
   public type!: string
 
-  @Index("index__created_at", { rangeKeys: ["user_id"] })
   @Column({name: "created_at"})
   public createdAt!: number
   

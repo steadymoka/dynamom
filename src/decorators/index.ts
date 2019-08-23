@@ -1,17 +1,20 @@
 import { IndexDecoratorFactory } from "../interfaces/decorator"
 import { metadataIndexes } from "../metadata"
 
-
-export const Index: IndexDecoratorFactory = (name, options = { rangeKeys: [] }) => (target, property) => {
-  let indexes = metadataIndexes.get(target.constructor)
+export const Index: IndexDecoratorFactory = (options) => (target) => {
+  let indexes = metadataIndexes.get(target)
   if (!indexes) {
     indexes = []
-    metadataIndexes.set(target.constructor, indexes)
+    metadataIndexes.set(target, indexes)
   }
   indexes.push({
     target,
-    property,
-    name: name || `index__${String(property)}`,
-    rangeKeys: options.rangeKeys,
+    name: options.name,
+    hash: {
+      keys: options.hash as [],
+    },
+    range: {
+      keys: options.range as [],
+    },
   })
 }

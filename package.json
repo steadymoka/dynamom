@@ -1,6 +1,6 @@
 {
   "name": "dynamom",
-  "version": "0.0.16",
+  "version": "0.0.20",
   "description": "orm for dynamoDB",
   "keywords": [
     "dynamodb",

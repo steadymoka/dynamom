@@ -81,7 +81,7 @@ async function createPostTable(ddb: DynamoDB): Promise<any> {
     BillingMode: "PAY_PER_REQUEST",
     GlobalSecondaryIndexes: [
       {
-        IndexName: "index__user_id",
+        IndexName: "index__user_id__id",
         KeySchema: [
           { AttributeName: 'user_id', KeyType: "HASH" },
           { AttributeName: 'id', KeyType: "RANGE" },
@@ -109,7 +109,7 @@ async function createMovieTable(ddb: DynamoDB): Promise<any> {
     BillingMode: "PAY_PER_REQUEST",
     GlobalSecondaryIndexes: [
       {
-        IndexName: "index__user_id",
+        IndexName: "index__user_id__created_at",
         KeySchema: [
           { AttributeName: 'user_id', KeyType: "HASH" },
           { AttributeName: 'create_at', KeyType: "RANGE" },
@@ -117,7 +117,7 @@ async function createMovieTable(ddb: DynamoDB): Promise<any> {
         Projection: { ProjectionType: "ALL" }
       },
       {
-        IndexName: "index__user_id_title",
+        IndexName: "index__index_key__user_id__title",
         KeySchema: [
           { AttributeName: 'index_key', KeyType: "HASH" },
           { AttributeName: 'user_id__title', KeyType: "RANGE" },

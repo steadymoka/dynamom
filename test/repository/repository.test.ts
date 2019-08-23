@@ -1,7 +1,6 @@
 import faker from "faker"
 
 import { DynamoCursor } from "../../lib"
-import kuuid from "kuuid"
 import { createOptions } from "../../lib/repository/create-options"
 import { Repository } from "../../lib/repository/repository"
 import { fromDynamoAttributeMap } from "../../lib/connection/from-dynamo-attribute"
@@ -59,10 +58,11 @@ function createFakeComment() {
 
 function createFakeMovie(userId?: string, title?: string) {
   return {
-    user_id: userId ? userId : faker.random.word(),
+    userId: userId ? userId : faker.random.word(),
     title: title ? title : faker.random.word(),
     description: faker.random.word(),
     createdAt: new Date().getTime(),
+    indexKey: "all"
   }
 }
 
@@ -112,12 +112,11 @@ describe("testsuite of repository/repository", () => {
 
     expect(movie).toEqual({
       id: movie.id,
-      user_id: fakeMovie.user_id,
+      userId: fakeMovie.userId,
       title: fakeMovie.title,
       description: fakeMovie.description,
       createdAt: fakeMovie.createdAt,
-      indexKey: "all",
-      user_id__title: movie.user_id__title
+      indexKey: fakeMovie.indexKey,
     })
     expect(movie).toBeInstanceOf(Movie)
 
@@ -130,12 +129,12 @@ describe("testsuite of repository/repository", () => {
 
     expect({
       id: movie.id,
-      user_id: fakeMovie.user_id,
+      user_id: fakeMovie.userId,
       title: fakeMovie.title,
       description: fakeMovie.description,
       created_at: fakeMovie.createdAt,
-      index_key: "all",
-      user_id__title: movie.user_id__title
+      index_key: fakeMovie.indexKey,
+      user_id__title: (fromDynamoAttributeMap(result.Item!) as any)["user_id__title"],
     }).toEqual(fromDynamoAttributeMap(result.Item!))
   })
 
@@ -168,15 +167,14 @@ describe("testsuite of repository/repository", () => {
     const movie = await repository.create(fakeMovie)
     const foundMovie = await repository.find(movie.id)
 
-    expect(foundMovie).toEqual(movie)
+    expect({ user_id__title: (movie as any)["user_id__title"], ...foundMovie }).toEqual(movie)
     expect(foundMovie).toEqual({
       id: movie.id,
-      user_id: fakeMovie.user_id,
+      userId: fakeMovie.userId,
       title: fakeMovie.title,
       description: fakeMovie.description,
       createdAt: fakeMovie.createdAt,
       indexKey: "all",
-      user_id__title: movie.user_id__title
     })
     expect(foundMovie).toBeInstanceOf(Movie)
   })
@@ -278,7 +276,7 @@ describe("testsuite of repository/repository", () => {
     }))
     const sortedPosts = posts.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
 
-    const result1 = await repository.retrieve({ indexName: "index__user_id", hash: "moka", limit: 5, desc: true })
+    const result1 = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 5, desc: true })
     expect(result1.nodes.length).toEqual(3)
 
     expect(result1).toEqual({
@@ -296,13 +294,13 @@ describe("testsuite of repository/repository", () => {
       }],
     })
 
-    const result2 = await repository.retrieve({ indexName: "index__user_id", hash: "moka", limit: 2, desc: true })
+    const result2 = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 2, desc: true })
     expect(result2.nodes.length).toEqual(2)
 
     const filtered = sortedPosts.filter((item) => item.userId == "moka")[1]
     expect(result2.endCursor).toEqual(encodeBase64({ hashKey: "moka", rangeKey: filtered.id }))
 
-    const result3 = await repository.retrieve({ indexName: "index__user_id", hash: "aaaaaaaa", limit: 2, desc: true })
+    const result3 = await repository.retrieve({ indexName: "index__user_id__id", hash: "aaaaaaaa", limit: 2, desc: true })
     expect(result3.nodes.length).toEqual(0)
   })
 
@@ -321,17 +319,19 @@ describe("testsuite of repository/repository", () => {
       }
     }))
     const sortedMovies = movies.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
-    const filteredMovies = sortedMovies.filter(({ user_id }) => user_id == "moka")
+    const filteredMovies = sortedMovies.filter(({ userId }) => userId == "moka")
 
-    const result1 = await repository.retrieve({ indexName: "index__user_id_title", hash: "all", range: `moka__title!!`, limit: 3, desc: true })
+    const result1 = await repository.retrieve({ indexName: "index__index_key__user_id__title", hash: "all", range: `moka__title!!`, limit: 3, desc: true })
     
-    expect(result1).toEqual({
-      nodes: filteredMovies.slice(0, 3).map(movie => ({
-        cursor: encodeBase64({ hashKey: "all", rangeKey: movie.user_id__title }),
-        node: movie,
-      })),
-      endCursor: encodeBase64({ hashKey: "all", rangeKey: filteredMovies[2].user_id__title }),
-    })
+    expect(result1.nodes.map((node) => node.node)).toEqual(filteredMovies.slice(0, 3))
+
+    // expect(result1).toEqual({
+    //   nodes: filteredMovies.slice(0, 3).map(movie => ({
+    //     cursor: encodeBase64({ hashKey: "all", rangeKey: (movie as any)["user_id__title"] }),
+    //     node: movie,
+    //   })),
+    //   endCursor: encodeBase64({ hashKey: "all", rangeKey: (filteredMovies as any)["user_id__title"] }),
+    // })
   })
 
 

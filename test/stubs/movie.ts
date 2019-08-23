@@ -1,7 +1,9 @@
-import { Column, Index, Entity, GeneratedValue, HashKey, GeneratedIndex } from "../../lib"
+import { Column, Index, Entity, GeneratedValue, HashKey } from "../../lib"
 
 
-@Entity({name: "movies"})
+@Entity({ name: "movies" })
+@Index<Movie>({ hash: ["userId"], range: ["createdAt"] })
+@Index<Movie>({ hash: ["indexKey"], range: ["userId", "title"] })
 export class Movie {
 
   @Column()
@@ -9,9 +11,8 @@ export class Movie {
   @HashKey()
   public id!: string
 
-  @Column()
-  @Index("index__user_id", { rangeKeys: ["created_at"] })
-  public user_id!: string
+  @Column({ name: "user_id" })
+  public userId!: string
 
   @Column()
   public title!: string
@@ -20,13 +21,8 @@ export class Movie {
   public description!: string
 
   @Column({ name: "index_key" })
-  @Index("index__user_id_title", { rangeKeys: ["user_id", "title"] })
-  @GeneratedIndex({ indexHash: "all" })
   public indexKey!: string
 
-  @Column()
-  public user_id__title!: string
-  
   @Column({ name: "created_at"})
   public createdAt!: number
 
