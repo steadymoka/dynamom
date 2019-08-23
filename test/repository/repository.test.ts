@@ -344,12 +344,16 @@ describe("testsuite of repository/repository", () => {
     const post = await repository.create(fakePost)
     post.content = "content+update@@moka"
 
+    console.log(post)
     expect(await repository.persist(post)).toBeUndefined() // return void
 
-    const foundPost = (await repository.find(post.pk, post.id))!
+    const foundPost = await repository.find(post.pk, post.id)
 
-    expect(foundPost.content).toEqual("content+update@@moka")
-    expect(foundPost).toEqual(post)
+    console.log(foundPost)
+    if (foundPost) {
+      expect(foundPost.content).toEqual("content+update@@moka")
+      expect(foundPost).toEqual(post)
+    }
   })
 
 

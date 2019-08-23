@@ -62,8 +62,8 @@ export class Repository<Entity> {
 
   public async find(hashKey: string, rangeKey?: any): Promise<Entity | undefined> {
     const cursor = {
-      hashKey: hashKey,
-      rangeKey: rangeKey
+      hashKey,
+      rangeKey
     }
     const node = await this.connection.getItem(this.options, cursor)
     if (node) {
@@ -104,20 +104,23 @@ export class Repository<Entity> {
     }
   }
 
-
   public async persist(entity: Entity): Promise<void> {
     const hashKey = (entity as any)[this.options.hashKey.property]
     if (!hashKey) {
       throw new Error("hashKey not defined!")
     }
-    await this.connection.putItem(this.options, {
-      cursor: this.options.rangeKey 
+    const rangeKey = this.options.rangeKey 
+      ? (entity as any)[this.options.rangeKey.property] 
+      : undefined
+    
+    await this.connection.updateItem(this.options, {
+      cursor: rangeKey
         ? {
-          hashKey: (entity as any)[this.options.hashKey.property],
-          rangeKey: (entity as any)[this.options.rangeKey.property],
+          hashKey,
+          rangeKey,
         }
         : {
-          hashKey: (entity as any)[this.options.hashKey.property],
+          hashKey,
         },
       node: this.transformer.toPlain(entity as Entity)
     })
@@ -128,14 +131,17 @@ export class Repository<Entity> {
     if (!hashKey) {
       throw new Error("hashKey not defined!")
     }
+    const rangeKey = this.options.rangeKey 
+      ? (entity as any)[this.options.rangeKey.property] 
+      : undefined
     await this.connection.deleteManyItems(this.options, [
-      this.options.rangeKey
+      rangeKey
         ? {
-          hashKey: (entity as any)[this.options.hashKey.property],
-          rangeKey: (entity as any)[this.options.rangeKey.property],
+          hashKey: hashKey,
+          rangeKey: rangeKey,
         }
         : {
-          hashKey: (entity as any)[this.options.hashKey.property],
+          hashKey: hashKey,
         },
     ])
   }
