@@ -52,9 +52,6 @@ export interface RetrieveOptions<P> {
 }
 
 export interface RetrieveResult<P> {
-  nodes: {
-    cursor: string
-    node: P
-  }[]
+  nodes: P[]
   endCursor?: string
 }

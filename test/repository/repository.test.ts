@@ -1,6 +1,5 @@
 import faker from "faker"
 
-import { DynamoCursor } from "../../lib"
 import { createOptions } from "../../lib/repository/create-options"
 import { Repository } from "../../lib/repository/repository"
 import { fromDynamoAttributeMap } from "../../lib/connection/from-dynamo-attribute"
@@ -10,12 +9,13 @@ import { Post } from "../stubs/post"
 import { Category } from "../stubs/category"
 import { Comment } from "../stubs/comment"
 import { Movie } from "../stubs/movie"
+import { Key } from "aws-sdk/clients/dynamodb"
 
 
 const range = (start: number, end: number) => Array.from({ length: (end - start) }, (_, k) => k + start)
 const delay = (time: any) => new Promise(res => setTimeout(res, time))
 
-function encodeBase64(cursor: DynamoCursor): string {
+function encodeBase64(cursor: Key): string {
   return Buffer.from(JSON.stringify(cursor)).toString("base64")
 }
 
@@ -191,18 +191,12 @@ describe("testsuite of repository/repository", () => {
     const result2 = await repository.retrieve({ hash: "all", after: result1.endCursor, desc: true })
 
     expect(result1).toEqual({
-      nodes: sortedPosts.slice(0, 5).map(post => ({
-        cursor: encodeBase64({ hashKey: "all", rangeKey: post.id }),
-        node: post,
-      })),
-      endCursor: encodeBase64({ hashKey: "all", rangeKey: sortedPosts[4].id }),
+      nodes: sortedPosts.slice(0, 5),
+      endCursor: encodeBase64({ pk: { S: "all" }, id: { S: sortedPosts[4].id } }),
     })
 
     expect(result2).toEqual({
-      nodes: sortedPosts.slice(5).map(post => ({
-        cursor: encodeBase64({ hashKey: "all", rangeKey: post.id }),
-        node: post,
-      })),
+      nodes: sortedPosts.slice(5),
     })
   })
 
@@ -218,18 +212,12 @@ describe("testsuite of repository/repository", () => {
     const result2 = await repository.retrieve({ hash: 1, after: result1.endCursor, desc: true })
 
     expect(result1).toEqual({
-      nodes: sortedCategories.slice(0, 5).map(category => ({
-        cursor: encodeBase64({ hashKey: 1, rangeKey: `${category.id}` }),
-        node: category,
-      })),
-      endCursor: encodeBase64({ hashKey: 1, rangeKey: `${sortedCategories[4].id}` }),
+      nodes: sortedCategories.slice(0, 5),
+      endCursor: encodeBase64({ hashKey: { N: "1" }, id: { S: `${sortedCategories[4].id}` } }),
     })
 
     expect(result2).toEqual({
-      nodes: sortedCategories.slice(5).map(category => ({
-        cursor: encodeBase64({ hashKey: 1, rangeKey: `${category.id}` }),
-        node: category,
-      })),
+      nodes: sortedCategories.slice(5),
     })
   })
 
@@ -245,18 +233,12 @@ describe("testsuite of repository/repository", () => {
     const result2 = await repository.retrieve({ hash: 1, after: result1.endCursor, desc: true })
     
     expect(result1).toEqual({
-      nodes: sortedComments.slice(0, 5).map(comment => ({
-        cursor: encodeBase64({ hashKey: 1, rangeKey: comment.type }),
-        node: comment,
-      })),
-      endCursor: encodeBase64({ hashKey: 1, rangeKey: sortedComments[4].type }),
+      nodes: sortedComments.slice(0, 5),
+      endCursor: encodeBase64({ type: { N: `${sortedComments[4].type}` }, pk: { N: "1" } }),
     })
 
     expect(result2).toEqual({
-      nodes: sortedComments.slice(5).map(comment => ({
-        cursor: encodeBase64({ hashKey: 1, rangeKey: comment.type }),
-        node: comment,
-      })),
+      nodes: sortedComments.slice(5),
     })
   })
 
@@ -280,25 +262,16 @@ describe("testsuite of repository/repository", () => {
     expect(result1.nodes.length).toEqual(3)
 
     expect(result1).toEqual({
-      nodes: [{
-        cursor: encodeBase64({ hashKey: "moka", rangeKey: sortedPosts.filter((item) => item.userId == "moka")[0].id }),
-        node: sortedPosts.filter((item) => item.userId == "moka")[0]
-      },
-      {
-        cursor: encodeBase64({ hashKey: "moka", rangeKey: sortedPosts.filter((item) => item.userId == "moka")[1].id }),
-        node: sortedPosts.filter((item) => item.userId == "moka")[1]
-      },
-      {
-        cursor: encodeBase64({ hashKey: "moka", rangeKey: sortedPosts.filter((item) => item.userId == "moka")[2].id }),
-        node: sortedPosts.filter((item) => item.userId == "moka")[2]
-      }],
+      nodes: [sortedPosts.filter((item) => item.userId == "moka")[0],
+        sortedPosts.filter((item) => item.userId == "moka")[1],
+        sortedPosts.filter((item) => item.userId == "moka")[2]],
     })
 
     const result2 = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 2, desc: true })
     expect(result2.nodes.length).toEqual(2)
 
-    const filtered = sortedPosts.filter((item) => item.userId == "moka")[1]
-    expect(result2.endCursor).toEqual(encodeBase64({ hashKey: "moka", rangeKey: filtered.id }))
+    const resultAfter = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 2, after: result2.endCursor, desc: true })
+    console.log("resultAfter", resultAfter)
 
     const result3 = await repository.retrieve({ indexName: "index__user_id__id", hash: "aaaaaaaa", limit: 2, desc: true })
     expect(result3.nodes.length).toEqual(0)
@@ -323,7 +296,7 @@ describe("testsuite of repository/repository", () => {
 
     const result1 = await repository.retrieve({ indexName: "index__index_key__user_id__title", hash: "all", range: `moka__title!!`, limit: 3, desc: true })
     
-    expect(result1.nodes.map((node) => node.node)).toEqual(filteredMovies.slice(0, 3))
+    expect(result1.nodes).toEqual(filteredMovies.slice(0, 3))
 
     // expect(result1).toEqual({
     //   nodes: filteredMovies.slice(0, 3).map(movie => ({
@@ -344,12 +317,10 @@ describe("testsuite of repository/repository", () => {
     const post = await repository.create(fakePost)
     post.content = "content+update@@moka"
 
-    console.log(post)
     expect(await repository.persist(post)).toBeUndefined() // return void
 
     const foundPost = await repository.find(post.pk, post.id)
 
-    console.log(foundPost)
     if (foundPost) {
       expect(foundPost.content).toEqual("content+update@@moka")
       expect(foundPost).toEqual(post)

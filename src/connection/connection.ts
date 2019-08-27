@@ -162,7 +162,7 @@ export class Connection {
   }
 
   public query<P = any>(options: RepositoryOptions<P>, { indexName, hash, range, limit = 20, after, desc = false }: QueryOptions<P> = { hash: "all" }): Promise<QueryResult<P>> {
-    const hashKey = indexName 
+    const hashKey = indexName
       ? (() => {
         const indexHash = options.indexes.find(({ name }) => name == indexName)!.hashKey
         if (indexHash.generated) {
@@ -213,54 +213,20 @@ export class Connection {
           ":hashkey": typeof hash == "string" ? { S: hash } : { N: `${hash}` }
         },
       ExclusiveStartKey: after 
-        ? (rangeKey 
-          ? {
-            [hashKey]: typeof after.hashKey == "string"
-              ? { S: `${after.hashKey}` }
-              : { N: `${after.hashKey}` },
-            [rangeKey]: typeof after.rangeKey == "string"
-              ? { S: `${after.rangeKey}` }
-              : { N: `${after.rangeKey}` },
-          } 
-          : {
-            [hashKey]: typeof after.hashKey == "string"
-              ? { S: `${after.hashKey}` }
-              : { N: `${after.hashKey}` },
-          }) 
+        ? after
         : undefined,
       ScanIndexForward: !desc,
     }, (err, result) => {
       if (err) {
         return reject(err)
       }
-      const nodes: DynamoNode<P>[] = (result.Items || []).map((item) => {
-        const node = fromDynamoAttributeMap(item) as P
-        return {
-          cursor: rangeKey
-            ? {
-              hashKey: item[hashKey].S
-                ? `${item[hashKey].S}`
-                : +(item[hashKey].N as string),
-              rangeKey: item[rangeKey].S
-                ? `${item[rangeKey].S}`
-                : +(item[rangeKey].N as string)
-            }
-            : {
-              hashKey: item[hashKey].S
-                ? `${item[hashKey].S}`
-                : +(item[hashKey].N as string),
-            },
-          node,
-        }
+      const nodes: P[] = (result.Items || []).map((item) => {
+        return fromDynamoAttributeMap(item) as P
       })
       if (result.LastEvaluatedKey) {
-        const lastCursor = fromDynamoAttributeMap(result.LastEvaluatedKey)
         return resolve({
           nodes,
-          endCursor: {
-            hashKey: lastCursor[hashKey],
-            rangeKey: rangeKey ? lastCursor[rangeKey] : undefined
-          },
+          endCursor: result.LastEvaluatedKey,
         })
       }
       resolve({

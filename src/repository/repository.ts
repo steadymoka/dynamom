@@ -3,14 +3,15 @@ import { Connection } from "../connection/connection"
 import { DynamoCursor } from "../interfaces/connection"
 import { RepositoryOptions, RetrieveOptions, RetrieveResult } from "../interfaces/repository"
 import { columnBy } from "../indexer/column-by"
+import { Key } from "aws-sdk/clients/dynamodb"
 import uuid from "uuid/v4"
 import kuuid from "kuuid"
 
-function encodeBase64(cursor: DynamoCursor): string {
+function encodeBase64(cursor: Key): string {
   return Buffer.from(JSON.stringify(cursor)).toString("base64")
 }
 
-function decodeBase64(buffer: string): DynamoCursor {
+function decodeBase64(buffer: string): Key {
   return JSON.parse(Buffer.from(buffer, "base64").toString("ascii"))
 }
 
@@ -73,8 +74,8 @@ export class Repository<Entity> {
   }
 
   public async retrieve({ indexName, hash, range, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: "all" }): Promise<RetrieveResult<Entity>> {
-    let endCursor: DynamoCursor | undefined
-    const nodes: {cursor: string, node: Entity}[] = []
+    let endCursor: Key | undefined
+    const nodes: Entity[] = []
 
     const result = await this.connection.query(this.options, {
       indexName,
@@ -86,11 +87,8 @@ export class Repository<Entity> {
     })
     endCursor = result.endCursor
 
-    result.nodes.forEach(({ node, cursor }) => {
-      nodes.push({
-        node: this.transformer.toEntity(node),
-        cursor: encodeBase64(cursor),
-      })
+    result.nodes.forEach((node) => {
+      nodes.push(this.transformer.toEntity(node))
     })
 
     if (endCursor) {

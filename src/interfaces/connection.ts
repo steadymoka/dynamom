@@ -1,16 +1,17 @@
+import { Key } from "aws-sdk/clients/dynamodb"
 
 export interface QueryOptions<P> {
   indexName?: string
   hash: string | number
   range?: string | number
   limit?: number
-  after?: DynamoCursor
+  after?: Key
   desc?: boolean
 }
 
 export interface QueryResult<P> {
-  nodes: DynamoNode<P>[]
-  endCursor?: DynamoCursor
+  nodes: P[]
+  endCursor?: Key
 }
 
 export interface DynamoNode<P extends {}> {
