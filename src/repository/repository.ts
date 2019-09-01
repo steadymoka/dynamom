@@ -1,11 +1,11 @@
 import { DeepPartial, Transformer } from "relater"
 import { Connection } from "../connection/connection"
-import { DynamoCursor } from "../interfaces/connection"
 import { RepositoryOptions, RetrieveOptions, RetrieveResult } from "../interfaces/repository"
 import { columnBy } from "../indexer/column-by"
 import { Key } from "aws-sdk/clients/dynamodb"
 import uuid from "uuid/v4"
 import kuuid from "kuuid"
+import { DynamoCursor } from "../interfaces/connection"
 
 function encodeBase64(cursor: Key): string {
   return Buffer.from(JSON.stringify(cursor)).toString("base64")
@@ -69,6 +69,14 @@ export class Repository<Entity> {
     const node = await this.connection.getItem(this.options, cursor)
     if (node) {
       return this.transformer.toEntity(node)
+    }
+    return
+  }
+
+  public async findByCursors(cursors: DynamoCursor[]): Promise<Entity[] | undefined> {
+    const nodes = await this.connection.getManyItems(this.options, cursors)
+    if (nodes) {
+      return this.transformer.toEntity(nodes)
     }
     return
   }

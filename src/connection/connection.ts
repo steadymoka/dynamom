@@ -161,6 +161,34 @@ export class Connection {
     }))
   }
 
+  public getManyItems<P = any>(options: RepositoryOptions<P>, cursors: DynamoCursor[]): Promise<any[]> {
+    if (cursors.length === 0) {
+      return Promise.resolve([])
+    }
+    return new Promise((resolve, reject) => this.client.batchGetItem({
+      RequestItems: {
+        [`${options.tableName}`]: {
+          Keys: cursors.map((cursor) => (options.rangeKey 
+            ? {
+              [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hashKey),
+              [options.rangeKey.sourceKey]: toDynamoAttribute(cursor.rangeKey),
+            } 
+            : {
+              [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hashKey),
+            })),
+        },
+      }
+    }, (err, result) => {
+      if (err) {
+        return reject(err)
+      }
+      if (result && result.Responses && result.Responses[`${options.tableName}`]) {
+        return resolve(result.Responses[`${options.tableName}`].map(fromDynamoAttributeMap))
+      }
+      resolve([])
+    }))
+  }
+
   public query<P = any>(options: RepositoryOptions<P>, { indexName, hash, range, limit = 20, after, desc = false }: QueryOptions<P> = { hash: "all" }): Promise<QueryResult<P>> {
     const hashKey = indexName
       ? (() => {
@@ -254,34 +282,6 @@ export class Connection {
         resolve(result.Count || 0)
       })
     })
-  }
-
-  public getManyItems<P = any>(options: RepositoryOptions<P>, cursors: DynamoCursor[]): Promise<any[]> {
-    if (cursors.length === 0) {
-      return Promise.resolve([])
-    }
-    return new Promise((resolve, reject) => this.client.batchGetItem({
-      RequestItems: {
-        [`${options.tableName}`]: {
-          Keys: cursors.map((cursor) => (options.rangeKey 
-            ? {
-              [options.hashKey.sourceKey]: { S: cursor.hashKey as string },
-              [options.rangeKey.sourceKey]: toDynamoAttribute(cursor.rangeKey),
-            } 
-            : {
-              [options.hashKey.sourceKey]: { S: cursor.hashKey as string },
-            })),
-        },
-      }
-    }, (err, result) => {
-      if (err) {
-        return reject(err)
-      }
-      if (result && result.Responses && result.Responses[`${options.tableName}`]) {
-        return resolve(result.Responses[`${options.tableName}`].map(fromDynamoAttributeMap))
-      }
-      resolve([])
-    }))
   }
 
   public deleteItem<P = any>(options: RepositoryOptions<P>, hashKey: string, rangeKey?: string): Promise<boolean> {

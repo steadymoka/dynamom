@@ -159,6 +159,20 @@ describe("testsuite of repository/repository", () => {
   })
 
 
+  it("test findByCursors", async () => {
+    const connection = await getSafeConnection("users")
+    const repository = new Repository(connection, createOptions(User))
+    const users = await Promise.all(range(0, 10).map(async () => { await delay(200); return repository.create(createFakeUser()) }))
+    const foundUsers = await repository.findByCursors(users.map(({ id, username }) => { return { hashKey: id, rangeKey: username } }))
+
+    expect(
+      foundUsers!.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
+    ).toEqual(
+      users.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
+    )
+  })
+
+
   it("test find only hashKey", async () => {
     const connection = await getSafeConnection("movies")
     const repository = new Repository(connection, createOptions(Movie))
@@ -270,11 +284,10 @@ describe("testsuite of repository/repository", () => {
     const result2 = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 2, desc: true })
     expect(result2.nodes.length).toEqual(2)
 
-    const resultAfter = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 2, after: result2.endCursor, desc: true })
-    console.log("resultAfter", resultAfter)
-
     const result3 = await repository.retrieve({ indexName: "index__user_id__id", hash: "aaaaaaaa", limit: 2, desc: true })
     expect(result3.nodes.length).toEqual(0)
+
+    const resultAfter = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 2, after: result2.endCursor, desc: true })
   })
 
 
@@ -297,14 +310,6 @@ describe("testsuite of repository/repository", () => {
     const result1 = await repository.retrieve({ indexName: "index__index_key__user_id__title", hash: "all", range: `moka__title!!`, limit: 3, desc: true })
     
     expect(result1.nodes).toEqual(filteredMovies.slice(0, 3))
-
-    // expect(result1).toEqual({
-    //   nodes: filteredMovies.slice(0, 3).map(movie => ({
-    //     cursor: encodeBase64({ hashKey: "all", rangeKey: (movie as any)["user_id__title"] }),
-    //     node: movie,
-    //   })),
-    //   endCursor: encodeBase64({ hashKey: "all", rangeKey: (filteredMovies as any)["user_id__title"] }),
-    // })
   })
 
 
