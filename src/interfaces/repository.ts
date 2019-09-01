@@ -38,6 +38,11 @@ export interface RepositoryOptions<P> extends RelaterOptions<P> {
   }[]
 }
 
+export interface CountOptions {
+  indexName?: string
+  hash: string | number
+}
+
 export interface RetrieveOptions<P> {
   indexName?: string
   hash: string | number

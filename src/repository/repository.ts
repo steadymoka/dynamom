@@ -1,6 +1,6 @@
 import { DeepPartial, Transformer } from "relater"
 import { Connection } from "../connection/connection"
-import { RepositoryOptions, RetrieveOptions, RetrieveResult } from "../interfaces/repository"
+import { RepositoryOptions, RetrieveOptions, RetrieveResult, CountOptions } from "../interfaces/repository"
 import { columnBy } from "../indexer/column-by"
 import { Key } from "aws-sdk/clients/dynamodb"
 import uuid from "uuid/v4"
@@ -79,6 +79,13 @@ export class Repository<Entity> {
       return this.transformer.toEntity(nodes)
     }
     return
+  }
+
+  public async count({ indexName, hash }: CountOptions): Promise<number> {
+    if (!hash) {
+      return Promise.resolve(0)
+    }
+    return await this.connection.count(this.options, indexName, hash)
   }
 
   public async retrieve({ indexName, hash, range, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: "all" }): Promise<RetrieveResult<Entity>> {

@@ -263,17 +263,30 @@ export class Connection {
     }))
   }
 
-  public count<P = any>(options: RepositoryOptions<P>, hashKey: string): Promise<number> {
+  public count<P = any>(options: RepositoryOptions<P>, indexName?: string, hash: string | number = ""): Promise<number> {
+    const hashKey = indexName
+      ? (() => {
+        const indexHash = options.indexes.find(({ name }) => name == indexName)!.hashKey
+        if (indexHash.generated) {
+          return indexHash.generated.key!
+        }
+        else {
+          return indexHash.sourceKey!
+        }
+      })()
+      : options.hashKey.sourceKey
+
     return new Promise((resolve, reject) => {
       this.client.query({
         TableName: `${options.tableName}`,
+        IndexName: indexName ? indexName : undefined,
         Select: "COUNT",
         KeyConditionExpression: `#hashkey = :hashkey`,
         ExpressionAttributeNames: {
-          "#hashkey": options.hashKey.sourceKey,
+          "#hashkey": hashKey,
         },
         ExpressionAttributeValues: {
-          ":hashkey": {S: hashKey},
+          ":hashkey": toDynamoAttribute(hash),
         },
       }, (err, result) => {
         if (err) {

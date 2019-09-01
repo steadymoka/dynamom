@@ -173,6 +173,25 @@ describe("testsuite of repository/repository", () => {
   })
 
 
+  it("test count", async () => {
+    const connection = await getSafeConnection("posts")
+    const repository = new Repository(connection, createOptions(Post))
+
+    const posts = await Promise.all(range(0, 10).map(async (i) => {
+      await delay(200)
+      if (i == 2 || i == 3 || i == 5) {
+        return repository.create(createFakePost("moka"))
+      }
+      else {
+        return repository.create(createFakePost())
+      }
+    }))
+
+    expect(await repository.count({ hash: "all" })).toEqual(10)
+    expect(await repository.count({ indexName: "index__user_id__id", hash: "moka" })).toEqual(3)
+  })
+
+
   it("test find only hashKey", async () => {
     const connection = await getSafeConnection("movies")
     const repository = new Repository(connection, createOptions(Movie))
