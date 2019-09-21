@@ -7,7 +7,7 @@
     "database",
     "orm",
     "typescript",
-    "dynamo1"
+    "dynamom"
   ],
   "author": "Moka <aud1220a@gmail.com>",
   "license": "MIT",
