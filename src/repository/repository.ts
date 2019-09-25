@@ -61,19 +61,29 @@ export class Repository<Entity> {
     return this.transformer.toEntity(node)
   }
 
-  public async find(hashKey: string, rangeKey?: any): Promise<Entity | undefined> {
-    const cursor = {
-      hashKey,
-      rangeKey
+  public async findOne({ indexName, hashKey, rangeKey }: { indexName?: string, hashKey: string | number, rangeKey?: string | number }): Promise<Entity | undefined> {
+    if (!indexName) {
+      if (this.options.rangeKey && !rangeKey) {
+        return (await this.retrieve({ hash: hashKey, limit: 1 })).nodes[0]
+      }
+      else {
+        const cursor = {
+          hashKey,
+          rangeKey
+        }
+        const node = await this.connection.getItem(this.options, cursor)
+        if (node) {
+          return this.transformer.toEntity(node)
+        }
+        return
+      }
     }
-    const node = await this.connection.getItem(this.options, cursor)
-    if (node) {
-      return this.transformer.toEntity(node)
+    else {
+      return (await this.retrieve({ indexName, hash: hashKey, range: rangeKey, limit: 1 })).nodes[0]
     }
-    return
   }
 
-  public async findByCursors(cursors: DynamoCursor[]): Promise<Entity[] | undefined> {
+  public async findOnes(cursors: DynamoCursor[]): Promise<Entity[] | undefined> {
     const nodes = await this.connection.getManyItems(this.options, cursors)
     if (nodes) {
       return this.transformer.toEntity(nodes)

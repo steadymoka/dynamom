@@ -145,7 +145,7 @@ describe("testsuite of repository/repository", () => {
     const fakeUser = createFakeUser()
 
     const user = await repository.create(fakeUser)
-    const foundUser_01 = await repository.find(user.id, user.username)
+    const foundUser_01 = await repository.findOne({ hashKey: user.id, rangeKey: user.username })
 
     expect(foundUser_01).toEqual(user)
     expect(foundUser_01).toEqual({
@@ -163,7 +163,7 @@ describe("testsuite of repository/repository", () => {
     const connection = await getSafeConnection("users")
     const repository = new Repository(connection, createOptions(User))
     const users = await Promise.all(range(0, 10).map(async () => { await delay(200); return repository.create(createFakeUser()) }))
-    const foundUsers = await repository.findByCursors(users.map(({ id, username }) => { return { hashKey: id, rangeKey: username } }))
+    const foundUsers = await repository.findOnes(users.map(({ id, username }) => { return { hashKey: id, rangeKey: username } }))
 
     expect(
       foundUsers!.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
@@ -198,7 +198,7 @@ describe("testsuite of repository/repository", () => {
     const fakeMovie = createFakeMovie()
 
     const movie = await repository.create(fakeMovie)
-    const foundMovie = await repository.find(movie.id)
+    const foundMovie = await repository.findOne({ hashKey: movie.id })
 
     expect({ user_id__title: (movie as any)["user_id__title"], ...foundMovie }).toEqual(movie)
     expect(foundMovie).toEqual({
@@ -307,6 +307,8 @@ describe("testsuite of repository/repository", () => {
     expect(result3.nodes.length).toEqual(0)
 
     const resultAfter = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 2, after: result2.endCursor, desc: true })
+
+    const result4 = await repository.findOne({ indexName: "index__user_id__id", hashKey: "moka" })
   })
 
 
@@ -343,7 +345,7 @@ describe("testsuite of repository/repository", () => {
 
     expect(await repository.persist(post)).toBeUndefined() // return void
 
-    const foundPost = await repository.find(post.pk, post.id)
+    const foundPost = await repository.findOne({ hashKey: post.pk, rangeKey: post.id })
 
     if (foundPost) {
       expect(foundPost.content).toEqual("content+update@@moka")
@@ -361,7 +363,7 @@ describe("testsuite of repository/repository", () => {
     const user = await repository.create(fakeUser)
 
     // exists!
-    expect(await repository.find(user.id, user.username)).toEqual(user)
+    expect(await repository.findOne({ hashKey: user.id, rangeKey: user.username })).toEqual(user)
     expect(await client.getItem({
       TableName: "users",
       Key: {
@@ -373,7 +375,7 @@ describe("testsuite of repository/repository", () => {
     expect(await repository.remove(user)).toBeUndefined() // return void
 
     // not exists!
-    expect(await repository.find(user.id, user.username)).toEqual(undefined)
+    expect(await repository.findOne({ hashKey: user.id, rangeKey: user.username })).toEqual(undefined)
     expect(await client.getItem({
       TableName: "users",
       Key: {
