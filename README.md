@@ -11,7 +11,7 @@
   <a href="https://www.npmjs.com/package/dynamom"><img alt="NPM" src="https://nodei.co/npm/dynamom.png" /></a>
 </p>
 
-Dynamo DB one table ORM for Javascript(& Typescript).
+Dynamo DB multi tables ORM for Javascript(& Typescript). forked by [dynamo1](https://github.com/wan2land/dynamo1)
 
 ## License
 

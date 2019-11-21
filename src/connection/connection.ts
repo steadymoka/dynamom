@@ -31,13 +31,13 @@ export class Connection {
     return new Promise((resolve, reject) => {
       let writeRequests: WriteRequest[]
       try {
-        writeRequests = rows.map(({ cursor: { hashKey, rangeKey }, node }): WriteRequest => {
+        writeRequests = rows.map(({ cursor: { hash, range }, node }): WriteRequest => {
           return options.rangeKey 
             ? {
               PutRequest: {
                 Item: {
-                  [options.hashKey.sourceKey]: toDynamoAttribute(hashKey),
-                  [options.rangeKey.sourceKey]: toDynamoAttribute(rangeKey),
+                  [options.hashKey.sourceKey]: toDynamoAttribute(hash),
+                  [options.rangeKey.sourceKey]: toDynamoAttribute(range),
                   ...toDynamoAttributeMap(node),
                 },
               }
@@ -45,7 +45,7 @@ export class Connection {
             : {
               PutRequest: {
                 Item: {
-                  [options.hashKey.sourceKey]: toDynamoAttribute(hashKey),
+                  [options.hashKey.sourceKey]: toDynamoAttribute(hash),
                   ...toDynamoAttributeMap(node),
                 },
               }
@@ -68,10 +68,10 @@ export class Connection {
             .filter(({ DeleteRequest }) => DeleteRequest)
             .map(({ DeleteRequest }) => DeleteRequest!.Key)
 
-          resolve(rows.map(({ cursor: { hashKey, rangeKey } }) => {
-            const foundFailKey = failKeys.find((failKey) => failKey[options.hashKey.sourceKey].S === hashKey && (
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === rangeKey)) ||
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === rangeKey))
+          resolve(rows.map(({ cursor: { hash, range } }) => {
+            const foundFailKey = failKeys.find((failKey) => failKey[options.hashKey.sourceKey].S === hash && (
+              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === range)) ||
+              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === range))
             ))
             return foundFailKey ? true : false
           }))
@@ -88,12 +88,12 @@ export class Connection {
         ReturnValues: "ALL_OLD",
         Item: options.rangeKey 
           ? {
-            [options.hashKey.sourceKey]: toDynamoAttribute(row.cursor.hashKey),
-            [options.rangeKey.sourceKey]: toDynamoAttribute(row.cursor.rangeKey),
+            [options.hashKey.sourceKey]: toDynamoAttribute(row.cursor.hash),
+            [options.rangeKey.sourceKey]: toDynamoAttribute(row.cursor.range),
             ...toDynamoAttributeMap(row.node),
           } 
           : {
-            [options.hashKey.sourceKey]: toDynamoAttribute(row.cursor.hashKey),
+            [options.hashKey.sourceKey]: toDynamoAttribute(row.cursor.hash),
             ...toDynamoAttributeMap(row.node),
           },
       }, (err) => {
@@ -115,11 +115,11 @@ export class Connection {
         TableName: options.tableName,
         Key: rangeKey
           ? {
-            [`${hashKey}`]: toDynamoAttribute(row.cursor.hashKey),
-            [`${rangeKey}`]: toDynamoAttribute(row.cursor.rangeKey)
+            [`${hashKey}`]: toDynamoAttribute(row.cursor.hash),
+            [`${rangeKey}`]: toDynamoAttribute(row.cursor.range)
           }
           : {
-            [`${hashKey}`]: toDynamoAttribute(row.cursor.hashKey)
+            [`${hashKey}`]: toDynamoAttribute(row.cursor.hash)
           },
         UpdateExpression: `SET ${keys.map(key => `#${key} = :${key}`).join(', ')}`,
         ExpressionAttributeNames: keys.reduce((carry, key) => {
@@ -144,11 +144,11 @@ export class Connection {
       TableName: `${options.tableName}`,
       Key: options.rangeKey 
         ? {
-          [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hashKey),
-          [options.rangeKey.sourceKey]: toDynamoAttribute(cursor.rangeKey),
+          [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hash),
+          [options.rangeKey.sourceKey]: toDynamoAttribute(cursor.range),
         } 
         : {
-          [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hashKey),
+          [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hash),
         },
     }, (err, data) => {
       if (err) {
@@ -170,11 +170,11 @@ export class Connection {
         [`${options.tableName}`]: {
           Keys: cursors.map((cursor) => (options.rangeKey 
             ? {
-              [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hashKey),
-              [options.rangeKey.sourceKey]: toDynamoAttribute(cursor.rangeKey),
+              [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hash),
+              [options.rangeKey.sourceKey]: toDynamoAttribute(cursor.range),
             } 
             : {
-              [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hashKey),
+              [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hash),
             })),
         },
       }
@@ -201,6 +201,7 @@ export class Connection {
         }
       })()
       : options.hashKey.sourceKey
+    let isGeneratedRangeKey = false
     const rangeKey = indexName 
       ? (() => {
         const indexRange = options.indexes.find(({ name }) => name == indexName)!.rangeKey
@@ -209,6 +210,7 @@ export class Connection {
         }
 
         if (indexRange.generated) {
+          isGeneratedRangeKey = true
           return indexRange.generated.key
         }
         else {
@@ -235,7 +237,7 @@ export class Connection {
       ExpressionAttributeValues: range 
         ? {
           ":hashkey": typeof hash == "string" ? { S: hash } : { N: `${hash}` },
-          ":rangekey": { S: `${range}__` }
+          ":rangekey": isGeneratedRangeKey ? { S: `${range}__` } : { S: `${range}` }
         } 
         : {
           ":hashkey": typeof hash == "string" ? { S: hash } : { N: `${hash}` }
@@ -323,16 +325,16 @@ export class Connection {
     return new Promise(((resolve, reject) => {
       this.client.batchWriteItem({
         RequestItems: {
-          [`${options.tableName}`]: cursors.map(({ hashKey, rangeKey }): WriteRequest => {
+          [`${options.tableName}`]: cursors.map(({ hash, range }): WriteRequest => {
             return {
               DeleteRequest: {
                 Key: options.rangeKey 
                   ? {
-                    [options.hashKey.sourceKey]: toDynamoAttribute(hashKey),
-                    [options.rangeKey.sourceKey]: toDynamoAttribute(rangeKey),
+                    [options.hashKey.sourceKey]: toDynamoAttribute(hash),
+                    [options.rangeKey.sourceKey]: toDynamoAttribute(range),
                   }
                   : {
-                    [options.hashKey.sourceKey]: toDynamoAttribute(hashKey),
+                    [options.hashKey.sourceKey]: toDynamoAttribute(hash),
                   },
               }
             }
@@ -347,9 +349,9 @@ export class Connection {
             .filter(({DeleteRequest}) => DeleteRequest)
             .map(({DeleteRequest}) => DeleteRequest!.Key)
           resolve(cursors.map((cursor) => {
-            const foundFailKey = failKeys.find((failKey) => failKey[options.hashKey.sourceKey].S === cursor.hashKey && (
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === cursor.rangeKey)) || 
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === cursor.rangeKey))
+            const foundFailKey = failKeys.find((failKey) => failKey[options.hashKey.sourceKey].S === cursor.hash && (
+              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === cursor.range)) || 
+              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === cursor.range))
             ))
             return foundFailKey ? true : false
           }))

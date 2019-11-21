@@ -99,7 +99,7 @@ describe("testsuite of repository/repository", () => {
       type_tt: fakeUser.type,
       created_at: fakeUser.createdAt,
     }).toEqual(fromDynamoAttributeMap(result.Item!))
-  })
+  }, 10000)
 
 
   it("test create only hashKey", async () => {
@@ -136,7 +136,7 @@ describe("testsuite of repository/repository", () => {
       index_key: fakeMovie.indexKey,
       user_id__title: (fromDynamoAttributeMap(result.Item!) as any)["user_id__title"],
     }).toEqual(fromDynamoAttributeMap(result.Item!))
-  })
+  }, 10000)
 
 
   it("test find", async () => {
@@ -145,7 +145,7 @@ describe("testsuite of repository/repository", () => {
     const fakeUser = createFakeUser()
 
     const user = await repository.create(fakeUser)
-    const foundUser_01 = await repository.findOne({ hashKey: user.id, rangeKey: user.username })
+    const foundUser_01 = await repository.findOne({ hash: user.id, range: user.username })
 
     expect(foundUser_01).toEqual(user)
     expect(foundUser_01).toEqual({
@@ -156,21 +156,24 @@ describe("testsuite of repository/repository", () => {
       createdAt: fakeUser.createdAt,
     })
     expect(foundUser_01).toBeInstanceOf(User)
-  })
+  }, 10000)
 
 
   it("test findByCursors", async () => {
     const connection = await getSafeConnection("users")
     const repository = new Repository(connection, createOptions(User))
-    const users = await Promise.all(range(0, 10).map(async () => { await delay(200); return repository.create(createFakeUser()) }))
-    const foundUsers = await repository.findOnes(users.map(({ id, username }) => { return { hashKey: id, rangeKey: username } }))
+    const users = await Promise.all(range(0, 10).map(async () => { 
+      await delay(100)
+      return repository.create(createFakeUser())
+    }))
+    const foundUsers = await repository.findOnes(users.map(({ id, username }) => { return { hash: id, range: username } }))
 
     expect(
       foundUsers!.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
     ).toEqual(
       users.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
     )
-  })
+  }, 10000)
 
 
   it("test count", async () => {
@@ -178,7 +181,7 @@ describe("testsuite of repository/repository", () => {
     const repository = new Repository(connection, createOptions(Post))
 
     const posts = await Promise.all(range(0, 10).map(async (i) => {
-      await delay(200)
+      await delay(100)
       if (i == 2 || i == 3 || i == 5) {
         return repository.create(createFakePost("moka"))
       }
@@ -189,7 +192,7 @@ describe("testsuite of repository/repository", () => {
 
     expect(await repository.count({ hash: "all" })).toEqual(10)
     expect(await repository.count({ indexName: "index__user_id__id", hash: "moka" })).toEqual(3)
-  })
+  }, 10000)
 
 
   it("test find only hashKey", async () => {
@@ -198,7 +201,7 @@ describe("testsuite of repository/repository", () => {
     const fakeMovie = createFakeMovie()
 
     const movie = await repository.create(fakeMovie)
-    const foundMovie = await repository.findOne({ hashKey: movie.id })
+    const foundMovie = await repository.findOne({ hash: movie.id })
 
     expect({ user_id__title: (movie as any)["user_id__title"], ...foundMovie }).toEqual(movie)
     expect(foundMovie).toEqual({
@@ -210,14 +213,14 @@ describe("testsuite of repository/repository", () => {
       indexKey: "all",
     })
     expect(foundMovie).toBeInstanceOf(Movie)
-  })
+  }, 10000)
 
 
   it("test retrieve hashKey is STRING type & sortKey is STRING type", async () => {
     const connection = await getSafeConnection("posts")
     const repository = new Repository(connection, createOptions(Post))
 
-    const posts = await Promise.all(range(0, 10).map(async () => { await delay(200); return repository.create(createFakePost()) }))
+    const posts = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakePost()) }))
     const sortedPosts = posts.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
 
     const result1 = await repository.retrieve({ hash: "all", limit: 5, desc: true })
@@ -231,14 +234,14 @@ describe("testsuite of repository/repository", () => {
     expect(result2).toEqual({
       nodes: sortedPosts.slice(5),
     })
-  })
+  }, 10000)
 
 
   it("test retrieve hashKey is NUMBER type & sortKey is STRING type", async () => {
     const connection = await getSafeConnection("categories")
     const repository = new Repository(connection, createOptions(Category))
 
-    const categories = await Promise.all(range(0, 10).map(async () => { await delay(200); return repository.create(createFakeCategory()) }))
+    const categories = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakeCategory()) }))
     const sortedCategories = categories.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
 
     const result1 = await repository.retrieve({ hash: 1, limit: 5, desc: true })
@@ -252,14 +255,14 @@ describe("testsuite of repository/repository", () => {
     expect(result2).toEqual({
       nodes: sortedCategories.slice(5),
     })
-  })
+  }, 10000)
 
 
   it("test retrieve hashKey is NUMBER type & sortKey is NUMBER type", async () => {
     const connection = await getSafeConnection("comments")
     const repository = new Repository(connection, createOptions(Comment))
 
-    const comments = await Promise.all(range(0, 10).map(async () => { await delay(200); return repository.create(createFakeComment()) }))
+    const comments = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakeComment()) }))
     const sortedComments = comments.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
 
     const result1 = await repository.retrieve({ hash: 1, limit: 5, desc: true })
@@ -273,7 +276,7 @@ describe("testsuite of repository/repository", () => {
     expect(result2).toEqual({
       nodes: sortedComments.slice(5),
     })
-  })
+  }, 10000)
 
 
   it("test retrieve by INDEX", async () => {
@@ -281,7 +284,7 @@ describe("testsuite of repository/repository", () => {
     const repository = new Repository(connection, createOptions(Post))
 
     const posts = await Promise.all(range(0, 10).map(async (i) => {
-      await delay(200)
+      await delay(100)
       if (i == 2 || i == 3 || i == 5) {
         return repository.create(createFakePost("moka"))
       }
@@ -308,8 +311,8 @@ describe("testsuite of repository/repository", () => {
 
     const resultAfter = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 2, after: result2.endCursor, desc: true })
 
-    const result4 = await repository.findOne({ indexName: "index__user_id__id", hashKey: "moka" })
-  })
+    const result4 = await repository.findOne({ indexName: "index__user_id__id", hash: "moka" })
+  }, 10000)
 
 
   it("test retrieve by INDEX and FILTER", async () => {
@@ -317,7 +320,7 @@ describe("testsuite of repository/repository", () => {
     const repository = new Repository(connection, createOptions(Movie))
 
     const movies = await Promise.all(range(0, 10).map(async (i) => {
-      await delay(200)
+      await delay(100)
       if (i == 2 || i == 3 || i == 5 || i == 6 || i == 7) {
         return repository.create(createFakeMovie("moka", "title!!"))
       }
@@ -331,7 +334,35 @@ describe("testsuite of repository/repository", () => {
     const result1 = await repository.retrieve({ indexName: "index__index_key__user_id__title", hash: "all", range: `moka__title!!`, limit: 3, desc: true })
     
     expect(result1.nodes).toEqual(filteredMovies.slice(0, 3))
-  })
+  }, 10000)
+
+  
+  it("test findOne with index, hash, range", async () => {
+    const connection = await getSafeConnection("posts")
+    const repository = new Repository(connection, createOptions(Post))
+
+    const posts = await Promise.all(range(0, 10).map(async (i) => {
+      await delay(100)
+      if (i == 2 || i == 3 || i == 5) {
+        return repository.create(createFakePost("moka"))
+      }
+      else if (i == 4) {
+        return repository.create(createFakePost("moka_a"))
+      }
+      else {
+        return repository.create(createFakePost())
+      }
+    }))
+
+    const savedPosts = posts.filter(({ userId }) => userId == "moka")
+    expect(savedPosts.length).toEqual(3)
+
+    range(0, 2).forEach(async (i) => {
+      const savedPost = savedPosts[i]
+      const findPost = await repository.findOne({ indexName: "index__user_id__id", hash: savedPost.userId, range: savedPost.id })
+      expect(savedPost).toEqual(findPost)
+    })
+  }, 10000)
 
 
   it("test persist(update) posts", async () => {
@@ -345,13 +376,13 @@ describe("testsuite of repository/repository", () => {
 
     expect(await repository.persist(post)).toBeUndefined() // return void
 
-    const foundPost = await repository.findOne({ hashKey: post.pk, rangeKey: post.id })
+    const foundPost = await repository.findOne({ hash: post.pk, range: post.id })
 
     if (foundPost) {
       expect(foundPost.content).toEqual("content+update@@moka")
       expect(foundPost).toEqual(post)
     }
-  })
+  }, 10000)
 
 
   it("test remove", async () => {
@@ -363,7 +394,7 @@ describe("testsuite of repository/repository", () => {
     const user = await repository.create(fakeUser)
 
     // exists!
-    expect(await repository.findOne({ hashKey: user.id, rangeKey: user.username })).toEqual(user)
+    expect(await repository.findOne({ hash: user.id, range: user.username })).toEqual(user)
     expect(await client.getItem({
       TableName: "users",
       Key: {
@@ -375,7 +406,7 @@ describe("testsuite of repository/repository", () => {
     expect(await repository.remove(user)).toBeUndefined() // return void
 
     // not exists!
-    expect(await repository.findOne({ hashKey: user.id, rangeKey: user.username })).toEqual(undefined)
+    expect(await repository.findOne({ hash: user.id, range: user.username })).toEqual(undefined)
     expect(await client.getItem({
       TableName: "users",
       Key: {
@@ -383,6 +414,6 @@ describe("testsuite of repository/repository", () => {
         ["username"]: { S: user.username },
       },
     }).promise()).toEqual({})
-  })
+  }, 10000)
 
 })

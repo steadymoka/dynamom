@@ -40,7 +40,6 @@ export class Repository<Entity> {
       if (index.hashKey.generated) {
         node[index.hashKey.generated.key] = `${columnBy<Entity>(index.hashKey.generated.properties as any)(entity)}}`
       }
-
       if (index.rangeKey && index.rangeKey.generated) {
         node[index.rangeKey.generated.key] = `${columnBy<Entity>(index.rangeKey.generated.properties as any)(entity)}__${new Date().getTime()}`
       }
@@ -53,23 +52,23 @@ export class Repository<Entity> {
 
     await this.connection.putItems(this.options, [{
       cursor: {
-        hashKey: node[this.options.hashKey.sourceKey],
-        rangeKey: this.options.rangeKey ? node[this.options.rangeKey.sourceKey] : undefined,
+        hash: node[this.options.hashKey.sourceKey],
+        range: this.options.rangeKey ? node[this.options.rangeKey.sourceKey] : undefined,
       },
       node,
     }])
     return this.transformer.toEntity(node)
   }
 
-  public async findOne({ indexName, hashKey, rangeKey }: { indexName?: string, hashKey: string | number, rangeKey?: string | number }): Promise<Entity | undefined> {
+  public async findOne({ indexName, hash, range }: { indexName?: string, hash: string | number, range?: string | number }): Promise<Entity | undefined> {
     if (!indexName) {
-      if (this.options.rangeKey && !rangeKey) {
-        return (await this.retrieve({ hash: hashKey, limit: 1 })).nodes[0]
+      if (this.options.rangeKey && !range) {
+        return (await this.retrieve({ hash: hash, limit: 1 })).nodes[0]
       }
       else {
         const cursor = {
-          hashKey,
-          rangeKey
+          hash,
+          range
         }
         const node = await this.connection.getItem(this.options, cursor)
         if (node) {
@@ -79,7 +78,7 @@ export class Repository<Entity> {
       }
     }
     else {
-      return (await this.retrieve({ indexName, hash: hashKey, range: rangeKey, limit: 1 })).nodes[0]
+      return (await this.retrieve({ indexName, hash: hash, range: range, limit: 1 })).nodes[0]
     }
   }
 
@@ -88,7 +87,7 @@ export class Repository<Entity> {
     if (nodes) {
       return this.transformer.toEntity(nodes)
     }
-    return
+    return undefined
   }
 
   public async count({ indexName, hash }: CountOptions): Promise<number> {
@@ -128,43 +127,43 @@ export class Repository<Entity> {
   }
 
   public async persist(entity: Entity): Promise<void> {
-    const hashKey = (entity as any)[this.options.hashKey.property]
-    if (!hashKey) {
+    const hash = (entity as any)[this.options.hashKey.property]
+    if (!hash) {
       throw new Error("hashKey not defined!")
     }
-    const rangeKey = this.options.rangeKey 
+    const range = this.options.rangeKey 
       ? (entity as any)[this.options.rangeKey.property] 
       : undefined
     
     await this.connection.updateItem(this.options, {
-      cursor: rangeKey
+      cursor: range
         ? {
-          hashKey,
-          rangeKey,
+          hash,
+          range,
         }
         : {
-          hashKey,
+          hash,
         },
       node: this.transformer.toPlain(entity as Entity)
     })
   }
 
   public async remove(entity: Entity): Promise<void> {
-    const hashKey = (entity as any)[this.options.hashKey.property]
-    if (!hashKey) {
+    const hash = (entity as any)[this.options.hashKey.property]
+    if (!hash) {
       throw new Error("hashKey not defined!")
     }
-    const rangeKey = this.options.rangeKey 
+    const range = this.options.rangeKey 
       ? (entity as any)[this.options.rangeKey.property] 
       : undefined
     await this.connection.deleteManyItems(this.options, [
-      rangeKey
+      range
         ? {
-          hashKey: hashKey,
-          rangeKey: rangeKey,
+          hash,
+          range,
         }
         : {
-          hashKey: hashKey,
+          hash,
         },
     ])
   }

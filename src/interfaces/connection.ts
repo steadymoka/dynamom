@@ -20,6 +20,6 @@ export interface DynamoNode<P extends {}> {
 }
 
 export interface DynamoCursor {
-  hashKey: string | number
-  rangeKey?: string | number
+  hash: string | number
+  range?: string | number
 }
