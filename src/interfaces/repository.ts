@@ -1,4 +1,5 @@
 import { Identifier, RelaterOptions, DeepPartial } from "relater"
+import { Condition } from "./common"
 
 export interface RepositoryOptions<P> extends RelaterOptions<P> {
   tableName: string
@@ -47,6 +48,7 @@ export interface RetrieveOptions<P> {
   indexName?: string
   hash: string | number
   range?: string | number
+  condition?: keyof Condition
   limit?: number
   after?: string
   filter?: {

@@ -97,7 +97,7 @@ export class Repository<Entity> {
     return await this.connection.count(this.options, indexName, hash)
   }
 
-  public async retrieve({ indexName, hash, range, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: "all" }): Promise<RetrieveResult<Entity>> {
+  public async retrieve({ indexName, hash, range, condition, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: "all" }): Promise<RetrieveResult<Entity>> {
     let endCursor: Key | undefined
     const nodes: Entity[] = []
 
@@ -105,6 +105,7 @@ export class Repository<Entity> {
       indexName,
       hash,
       range,
+      condition,
       limit,
       after: after ? decodeBase64(after) : undefined,
       desc,

@@ -140,6 +140,17 @@ export async function getDynamoClient() {
   })
 }
 
+export async function getDynamoDocumentClient() {
+  return new DynamoDB.DocumentClient({
+    endpoint: `http://localhost:${await getDockerComposePort("dynamodb", 8000)}`,
+    credentials: {
+      accessKeyId: "accesskey",
+      secretAccessKey: "secret",
+    },
+    region: "ap-northeast-2",
+  })
+}
+
 export function getDockerComposePort(service: string, port: number): Promise<number> {
   let cachedPort: number | undefined
   if (cachedPort) {
