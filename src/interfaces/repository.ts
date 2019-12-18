@@ -1,5 +1,5 @@
-import { Identifier, RelaterOptions, DeepPartial } from "relater"
-import { Condition } from "./common"
+import { Identifier, RelaterOptions } from "relater"
+import { RagneOption } from "./range"
 
 export interface RepositoryOptions<P> extends RelaterOptions<P> {
   tableName: string
@@ -47,14 +47,9 @@ export interface CountOptions {
 export interface RetrieveOptions<P> {
   indexName?: string
   hash: string | number
-  range?: string | number
-  condition?: keyof Condition
+  rangeOption?: RagneOption
   limit?: number
   after?: string
-  filter?: {
-    property: DeepPartial<P>
-    value: any
-  }
   desc?: boolean
 }
 

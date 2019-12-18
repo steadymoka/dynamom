@@ -10,6 +10,7 @@ import { Category } from "../stubs/category"
 import { Comment } from "../stubs/comment"
 import { Movie } from "../stubs/movie"
 import { Key } from "aws-sdk/clients/dynamodb"
+import { DefaultRange, BiggerThanRange, SmallerThanRange } from "../../lib"
 
 
 const range = (start: number, end: number) => Array.from({ length: (end - start) }, (_, k) => k + start)
@@ -67,7 +68,7 @@ function createFakeMovie(userId?: string, title?: string) {
 }
 
 describe("testsuite of repository/repository", () => {
-  if (false) {
+  if (true) {
     it("test create", async () => {
       const connection = await getSafeConnection("users")
       const client = connection.client
@@ -259,7 +260,7 @@ describe("testsuite of repository/repository", () => {
     }, 10000)
   }
 
-  if (false) {
+  if (true) {
     it("test retrieve hashKey is NUMBER type & sortKey is NUMBER type", async () => {
       const connection = await getSafeConnection("comments")
       const repository = new Repository(connection, createOptions(Comment))
@@ -267,7 +268,7 @@ describe("testsuite of repository/repository", () => {
       const comments = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakeComment()) }))
       const sortedComments = comments.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
   
-      const result = await repository.retrieve({ hash: 1, range: comments[2].type })
+      const result = await repository.retrieve({ hash: 1, rangeOption: new DefaultRange(comments[2].type) })
       expect(result).toEqual({
         nodes: [comments[2]],
       })
@@ -291,23 +292,21 @@ describe("testsuite of repository/repository", () => {
     const repository = new Repository(connection, createOptions(Comment))
 
     const comments = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakeComment()) }))
-    const sortedComments = comments.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
+    const sortedComments = comments.sort((a, b) => a.createdAt > b.createdAt ? 1 : -1) // 오름차순
     expect(comments.length).toEqual(10)
     
     const result1 = await repository.retrieve({ 
       hash: 1, 
-      range: sortedComments[6].type,
-      condition: "BiggerThan",
-      desc: true
+      rangeOption: new BiggerThanRange(sortedComments[6].type),
+      desc: false
     })
     expect(result1.nodes.length).toEqual(3)
 
     const result2 = await repository.retrieve({
       hash: 1,
-      range: sortedComments[1].type,
-      condition: "BiggerThan",
+      rangeOption: new BiggerThanRange(sortedComments[1].type),
       limit: 2,
-      desc: true
+      desc: false
     })
     expect(result2.nodes.length).toEqual(2)
     expect(result2).toEqual({
@@ -316,11 +315,10 @@ describe("testsuite of repository/repository", () => {
     })
     const result3 = await repository.retrieve({
       hash: 1,
-      range: sortedComments[1].type,
-      condition: "BiggerThan",
+      rangeOption: new BiggerThanRange(sortedComments[1].type),
       after: result2.endCursor,
       limit: 2,
-      desc: true
+      desc: false
     })
     expect(result3.nodes.length).toEqual(2)
     expect(result3).toEqual({
@@ -330,7 +328,7 @@ describe("testsuite of repository/repository", () => {
 
   }, 20000)
 
-  if (false) {
+  if (true) {
     it("test retrieve by INDEX", async () => {
       const connection = await getSafeConnection("posts")
       const repository = new Repository(connection, createOptions(Post))
@@ -351,8 +349,8 @@ describe("testsuite of repository/repository", () => {
 
       expect(result1).toEqual({
         nodes: [sortedPosts.filter((item) => item.userId == "moka")[0],
-        sortedPosts.filter((item) => item.userId == "moka")[1],
-        sortedPosts.filter((item) => item.userId == "moka")[2]],
+          sortedPosts.filter((item) => item.userId == "moka")[1],
+          sortedPosts.filter((item) => item.userId == "moka")[2]],
       })
 
       const result2 = await repository.retrieve({ indexName: "index__user_id__id", hash: "moka", limit: 2, desc: true })
@@ -383,7 +381,13 @@ describe("testsuite of repository/repository", () => {
       const sortedMovies = movies.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
       const filteredMovies = sortedMovies.filter(({ userId }) => userId == "moka")
 
-      const result1 = await repository.retrieve({ indexName: "index__index_key__user_id__title", hash: "all", range: `moka__title!!`, limit: 3, desc: true })
+      const result1 = await repository.retrieve({ 
+        indexName: "index__index_key__user_id__title", 
+        hash: "all", 
+        rangeOption: new DefaultRange(`moka__title!!`), 
+        limit: 3,
+        desc: true
+      })
 
       expect(result1.nodes).toEqual(filteredMovies.slice(0, 3))
     }, 10000)

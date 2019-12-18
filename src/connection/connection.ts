@@ -189,7 +189,7 @@ export class Connection {
     }))
   }
 
-  public query<P = any>(options: RepositoryOptions<P>, { indexName, hash, range, condition, limit = 20, after, desc = false }: QueryOptions<P> = { hash: "all" }): Promise<QueryResult<P>> {
+  public query<P = any>(options: RepositoryOptions<P>, { indexName, hash, rangeOption, limit = 20, after, desc = false }: QueryOptions<P> = { hash: "all" }): Promise<QueryResult<P>> {
     const hashKey = indexName
       ? (() => {
         const indexHash = options.indexes.find(({ name }) => name == indexName)!.hashKey
@@ -219,26 +219,16 @@ export class Connection {
       })() 
       : options.rangeKey ? options.rangeKey.sourceKey : undefined
 
-    var conditionExpression = "#hashkey = :hashkey and #rangekey = :rangekey"
-    switch (condition) {
-      case "BiggerThan": {
-        conditionExpression = "#hashkey = :hashkey and #rangekey > :rangekey"
-      }
-      case "SmallerThan": {
-        conditionExpression = "#hashkey = :hashkey and #rangekey < :rangekey"
-      }
-    }
-    
     return new Promise((resolve, reject) => this.client.query({
       TableName: `${options.tableName}`,
       IndexName: indexName ? indexName : undefined,
       Limit: limit,
-      KeyConditionExpression: range 
+      KeyConditionExpression: rangeOption 
         ? isGeneratedRangeKey == true
           ? `#hashkey = :hashkey and begins_with(#rangekey, :rangekey)`
-          : conditionExpression
+          : `#hashkey = :hashkey and ${rangeOption!.getExpression()}`
         : `#hashkey = :hashkey`,
-      ExpressionAttributeNames: range 
+      ExpressionAttributeNames: rangeOption 
         ? {
           "#hashkey": hashKey,
           "#rangekey": rangeKey!
@@ -246,16 +236,16 @@ export class Connection {
         : {
           "#hashkey": hashKey
         },
-      ExpressionAttributeValues: range 
+      ExpressionAttributeValues: rangeOption 
         ? {
           ":hashkey": typeof hash == "string"
             ? { S: hash }
             : { N: `${hash}` },
           ":rangekey": isGeneratedRangeKey 
-            ? { S: `${range}__` }
-            : typeof range == "string"
-              ? { S: `${range}` }
-              : { N: `${range}` }
+            ? { S: `${rangeOption.range}__` }
+            : typeof rangeOption.range == "string"
+              ? { S: `${rangeOption.range}` }
+              : { N: `${rangeOption.range}` }
         }
         : {
           ":hashkey": typeof hash == "string" 

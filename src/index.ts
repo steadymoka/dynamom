@@ -28,6 +28,12 @@ export * from "./interfaces/decorator"
 export * from "./interfaces/metadata"
 export * from "./interfaces/repository"
 
+export {
+  DefaultRange,
+  BiggerThanRange,
+  SmallerThanRange
+} from "./interfaces/range"
+
 export { Connection } from "./connection/connection"
 export { createConnection } from "./connection/create-connection"
 

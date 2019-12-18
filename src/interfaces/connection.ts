@@ -1,11 +1,10 @@
 import { Key } from "aws-sdk/clients/dynamodb"
-import { Condition } from "./common"
+import { RagneOption } from "./range"
 
 export interface QueryOptions<P> {
   indexName?: string
   hash: string | number
-  range?: string | number
-  condition?: keyof Condition
+  rangeOption?: RagneOption
   limit?: number
   after?: Key
   desc?: boolean

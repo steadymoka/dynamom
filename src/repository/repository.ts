@@ -6,6 +6,7 @@ import { Key } from "aws-sdk/clients/dynamodb"
 import uuid from "uuid/v4"
 import kuuid from "kuuid"
 import { DynamoCursor } from "../interfaces/connection"
+import { DefaultRange } from "../interfaces/range"
 
 function encodeBase64(cursor: Key): string {
   return Buffer.from(JSON.stringify(cursor)).toString("base64")
@@ -78,7 +79,7 @@ export class Repository<Entity> {
       }
     }
     else {
-      return (await this.retrieve({ indexName, hash: hash, range: range, limit: 1 })).nodes[0]
+      return (await this.retrieve({ indexName, hash: hash, rangeOption: range ? new DefaultRange(range!) : undefined, limit: 1 })).nodes[0]
     }
   }
 
@@ -97,15 +98,14 @@ export class Repository<Entity> {
     return await this.connection.count(this.options, indexName, hash)
   }
 
-  public async retrieve({ indexName, hash, range, condition, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: "all" }): Promise<RetrieveResult<Entity>> {
+  public async retrieve({ indexName, hash, rangeOption, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: "all" }): Promise<RetrieveResult<Entity>> {
     let endCursor: Key | undefined
     const nodes: Entity[] = []
 
     const result = await this.connection.query(this.options, {
       indexName,
       hash,
-      range,
-      condition,
+      rangeOption,
       limit,
       after: after ? decodeBase64(after) : undefined,
       desc,
