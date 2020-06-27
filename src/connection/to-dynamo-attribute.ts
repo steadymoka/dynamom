@@ -7,7 +7,7 @@ export function toDynamoAttributeMap(item: {[key: string]: any}): AttributeMap {
 }
 
 export function toDynamoAttribute(item: any): AttributeValue {
-  if (item === null || item === "") {
+  if (item === null) {
     return {NULL: true}
   }
   if (typeof item === "string") {
