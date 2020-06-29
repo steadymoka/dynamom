@@ -68,7 +68,7 @@ function createFakeMovie(userId?: string, title?: string) {
 }
 
 describe("testsuite of repository/repository", () => {
-  if (true) {
+  if (false) {
     it("test create", async () => {
       const connection = await getSafeConnection("users")
       const client = connection.client
@@ -260,7 +260,7 @@ describe("testsuite of repository/repository", () => {
     }, 10000)
   }
 
-  if (true) {
+  if (false) {
     it("test retrieve hashKey is NUMBER type & sortKey is NUMBER type", async () => {
       const connection = await getSafeConnection("comments")
       const repository = new Repository(connection, createOptions(Comment))
@@ -328,7 +328,7 @@ describe("testsuite of repository/repository", () => {
 
   }, 20000)
 
-  if (true) {
+  if (false) {
     it("test retrieve by INDEX", async () => {
       const connection = await getSafeConnection("posts")
       const repository = new Repository(connection, createOptions(Post))

@@ -10,7 +10,7 @@ export function fromDynamoAttribute(item: AttributeValue): any {
   if (item.NULL) {
     return null
   }
-  if (item.S) {
+  if (item.S || item.S == "") {
     return item.S
   }
   if (item.N) {
