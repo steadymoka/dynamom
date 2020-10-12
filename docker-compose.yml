@@ -1,6 +1,6 @@
 version: '3'
 services:
   dynamodb:
-    image: amazon/dynamodb-local:latest
+    image: amazon/dynamodb-local:1.13.1
     ports:
       - 8000

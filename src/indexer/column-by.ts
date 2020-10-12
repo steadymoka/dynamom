@@ -1,9 +1,7 @@
-import { MaybeArray } from "relater"
-import { Indexer } from "../interfaces/common"
-
+import { Indexer, MaybeArray } from '../interfaces/common'
 
 export function columnBy<P>(columns: MaybeArray<keyof P>): Indexer<P> {
-  return Array.isArray(columns) ?
-    (entity) => columns.map(column => entity[column]).join("__") :
-    (entity) => (entity[columns] + "")
+  return Array.isArray(columns)
+    ? (entity) => columns.map(column => entity[column]).join('__')
+    : (entity) => `${entity[columns]}`
 }

@@ -1,13 +1,12 @@
-import { DynamoDB } from "aws-sdk"
-import { WriteRequest } from "aws-sdk/clients/dynamodb"
-import { ConstructType } from "relater"
-import { DynamoCursor, DynamoNode, QueryOptions, QueryResult } from "../interfaces/connection"
-import { createOptions } from "../repository/create-options"
-import { Repository } from "../repository/repository"
-import { fromDynamoAttributeMap } from "./from-dynamo-attribute"
-import { toDynamoAttributeMap, toDynamoAttribute } from "./to-dynamo-attribute"
-import { RepositoryOptions } from "../interfaces/repository"
+import { DynamoDB } from 'aws-sdk'
+import { WriteRequest } from 'aws-sdk/clients/dynamodb'
 
+import { ConstructType } from '../interfaces/common'
+import { DynamoCursor, DynamoNode, QueryOptions, QueryResult } from '../interfaces/connection'
+import { RepositoryOptions } from '../interfaces/repository'
+import { createOptions } from '../repository/create-options'
+import { Repository } from '../repository/repository'
+import { fromDynamoMap, toDynamo, toDynamoMap } from './transformer'
 
 export class Connection {
 
@@ -15,7 +14,7 @@ export class Connection {
 
   public constructor(public client: DynamoDB) { }
 
-  public getRepository<Entity, R extends Repository<Entity>>(ctor: ConstructType<Entity>): R {
+  public getRepository<Entity extends object, R extends Repository<Entity>>(ctor: ConstructType<Entity>): R {
     let repository = this.repositories.get(ctor)
     if (!repository) {
       repository = new Repository(this, createOptions(ctor))
@@ -32,23 +31,23 @@ export class Connection {
       let writeRequests: WriteRequest[]
       try {
         writeRequests = rows.map(({ cursor: { hash, range }, node }): WriteRequest => {
-          return options.rangeKey 
+          return options.rangeKey
             ? {
               PutRequest: {
                 Item: {
-                  [options.hashKey.sourceKey]: toDynamoAttribute(hash),
-                  [options.rangeKey.sourceKey]: toDynamoAttribute(range),
-                  ...toDynamoAttributeMap(node),
+                  [options.hashKey.sourceKey]: toDynamo(hash),
+                  [options.rangeKey.sourceKey]: toDynamo(range),
+                  ...toDynamoMap(node),
                 },
-              }
+              },
             }
             : {
               PutRequest: {
                 Item: {
-                  [options.hashKey.sourceKey]: toDynamoAttribute(hash),
-                  ...toDynamoAttributeMap(node),
+                  [options.hashKey.sourceKey]: toDynamo(hash),
+                  ...toDynamoMap(node),
                 },
-              }
+              },
             }
         })
       } catch (e) {
@@ -70,10 +69,10 @@ export class Connection {
 
           resolve(rows.map(({ cursor: { hash, range } }) => {
             const foundFailKey = failKeys.find((failKey) => failKey[options.hashKey.sourceKey].S === hash && (
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === range)) ||
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === range))
+              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === range))
+              || (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === range))
             ))
-            return foundFailKey ? true : false
+            return !!foundFailKey
           }))
         }
         resolve(rows.map(() => true))
@@ -85,16 +84,16 @@ export class Connection {
     return new Promise((resolve, reject) => {
       this.client.putItem({
         TableName: options.tableName,
-        ReturnValues: "ALL_OLD",
-        Item: options.rangeKey 
+        ReturnValues: 'ALL_OLD',
+        Item: options.rangeKey
           ? {
-            [options.hashKey.sourceKey]: toDynamoAttribute(row.cursor.hash),
-            [options.rangeKey.sourceKey]: toDynamoAttribute(row.cursor.range),
-            ...toDynamoAttributeMap(row.node),
-          } 
+            [options.hashKey.sourceKey]: toDynamo(row.cursor.hash),
+            [options.rangeKey.sourceKey]: toDynamo(row.cursor.range),
+            ...toDynamoMap(row.node),
+          }
           : {
-            [options.hashKey.sourceKey]: toDynamoAttribute(row.cursor.hash),
-            ...toDynamoAttributeMap(row.node),
+            [options.hashKey.sourceKey]: toDynamo(row.cursor.hash),
+            ...toDynamoMap(row.node),
           },
       }, (err) => {
         if (err) {
@@ -109,17 +108,17 @@ export class Connection {
     const hashKey = options.hashKey.sourceKey
     const rangeKey = options.rangeKey ? options.rangeKey.sourceKey : undefined
     const keys = Object.keys(row.node).filter((key) => key != hashKey && key != rangeKey)
-    
+
     return new Promise((resolve, reject) => {
       this.client.updateItem({
         TableName: options.tableName,
         Key: rangeKey
           ? {
-            [`${hashKey}`]: toDynamoAttribute(row.cursor.hash),
-            [`${rangeKey}`]: toDynamoAttribute(row.cursor.range)
+            [`${hashKey}`]: toDynamo(row.cursor.hash),
+            [`${rangeKey}`]: toDynamo(row.cursor.range),
           }
           : {
-            [`${hashKey}`]: toDynamoAttribute(row.cursor.hash)
+            [`${hashKey}`]: toDynamo(row.cursor.hash),
           },
         UpdateExpression: `SET ${keys.map(key => `#${key} = :${key}`).join(', ')}`,
         ExpressionAttributeNames: keys.reduce((carry, key) => {
@@ -127,7 +126,7 @@ export class Connection {
           return carry
         }, {} as any),
         ExpressionAttributeValues: keys.reduce((carry, key) => {
-          carry[`:${key}`] = toDynamoAttribute((row.node as any)[key])
+          carry[`:${key}`] = toDynamo((row.node as any)[key])
           return carry
         }, {} as any),
       }, (err) => {
@@ -142,20 +141,20 @@ export class Connection {
   public getItem<P = any>(options: RepositoryOptions<P>, cursor: DynamoCursor): Promise<any | null> {
     return new Promise((resolve, reject) => this.client.getItem({
       TableName: `${options.tableName}`,
-      Key: options.rangeKey 
+      Key: options.rangeKey
         ? {
-          [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hash),
-          [options.rangeKey.sourceKey]: toDynamoAttribute(cursor.range),
-        } 
+          [options.hashKey.sourceKey]: toDynamo(cursor.hash),
+          [options.rangeKey.sourceKey]: toDynamo(cursor.range),
+        }
         : {
-          [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hash),
+          [options.hashKey.sourceKey]: toDynamo(cursor.hash),
         },
     }, (err, data) => {
       if (err) {
         return reject(err)
       }
       if (data && data.Item) {
-        resolve(fromDynamoAttributeMap(data.Item))
+        resolve(fromDynamoMap(data.Item))
       }
       resolve(null)
     }))
@@ -168,41 +167,39 @@ export class Connection {
     return new Promise((resolve, reject) => this.client.batchGetItem({
       RequestItems: {
         [`${options.tableName}`]: {
-          Keys: cursors.map((cursor) => (options.rangeKey 
+          Keys: cursors.map((cursor) => (options.rangeKey
             ? {
-              [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hash),
-              [options.rangeKey.sourceKey]: toDynamoAttribute(cursor.range),
-            } 
+              [options.hashKey.sourceKey]: toDynamo(cursor.hash),
+              [options.rangeKey.sourceKey]: toDynamo(cursor.range),
+            }
             : {
-              [options.hashKey.sourceKey]: toDynamoAttribute(cursor.hash),
+              [options.hashKey.sourceKey]: toDynamo(cursor.hash),
             })),
         },
-      }
+      },
     }, (err, result) => {
       if (err) {
         return reject(err)
       }
       if (result && result.Responses && result.Responses[`${options.tableName}`]) {
-        return resolve(result.Responses[`${options.tableName}`].map(fromDynamoAttributeMap))
+        return resolve(result.Responses[`${options.tableName}`].map(fromDynamoMap))
       }
       resolve([])
     }))
   }
 
-  public query<P = any>(options: RepositoryOptions<P>, { indexName, hash, rangeOption, limit = 20, after, desc = false }: QueryOptions<P> = { hash: "all" }): Promise<QueryResult<P>> {
+  public query<P = any>(options: RepositoryOptions<P>, { indexName, hash, rangeOption, limit = 20, after, desc = false }: QueryOptions<P> = { hash: 'all' }): Promise<QueryResult<P>> {
     const hashKey = indexName
       ? (() => {
         const indexHash = options.indexes.find(({ name }) => name == indexName)!.hashKey
         if (indexHash.generated) {
-          return indexHash.generated.key!
+          return indexHash.generated.key
         }
-        else {
-          return indexHash.sourceKey!
-        }
+        return indexHash.sourceKey!
       })()
       : options.hashKey.sourceKey
     let isGeneratedRangeKey = false
-    const rangeKey = indexName 
+    const rangeKey = indexName
       ? (() => {
         const indexRange = options.indexes.find(({ name }) => name == indexName)!.rangeKey
         if (!indexRange) {
@@ -213,46 +210,44 @@ export class Connection {
           isGeneratedRangeKey = true
           return indexRange.generated.key
         }
-        else {
-          return indexRange.sourceKey
-        }
-      })() 
+        return indexRange.sourceKey
+      })()
       : options.rangeKey ? options.rangeKey.sourceKey : undefined
 
     return new Promise((resolve, reject) => this.client.query({
       TableName: `${options.tableName}`,
       IndexName: indexName ? indexName : undefined,
       Limit: limit,
-      KeyConditionExpression: rangeOption 
+      KeyConditionExpression: rangeOption
         ? isGeneratedRangeKey == true
-          ? `#hashkey = :hashkey and begins_with(#rangekey, :rangekey)`
-          : `#hashkey = :hashkey and ${rangeOption!.getExpression()}`
-        : `#hashkey = :hashkey`,
-      ExpressionAttributeNames: rangeOption 
+          ? '#hashkey = :hashkey and begins_with(#rangekey, :rangekey)'
+          : `#hashkey = :hashkey and ${rangeOption.getExpression()}`
+        : '#hashkey = :hashkey',
+      ExpressionAttributeNames: rangeOption
         ? {
-          "#hashkey": hashKey,
-          "#rangekey": rangeKey!
-        } 
-        : {
-          "#hashkey": hashKey
-        },
-      ExpressionAttributeValues: rangeOption 
-        ? {
-          ":hashkey": typeof hash == "string"
-            ? { S: hash }
-            : { N: `${hash}` },
-          ":rangekey": isGeneratedRangeKey 
-            ? { S: `${rangeOption.range}__` }
-            : typeof rangeOption.range == "string"
-              ? { S: `${rangeOption.range}` }
-              : { N: `${rangeOption.range}` }
+          '#hashkey': hashKey,
+          '#rangekey': rangeKey!,
         }
         : {
-          ":hashkey": typeof hash == "string" 
-            ? { S: hash } 
-            : { N: `${hash}` }
+          '#hashkey': hashKey,
         },
-      ExclusiveStartKey: after 
+      ExpressionAttributeValues: rangeOption
+        ? {
+          ':hashkey': typeof hash == 'string'
+            ? { S: hash }
+            : { N: `${hash}` },
+          ':rangekey': isGeneratedRangeKey
+            ? { S: `${rangeOption.range}__` }
+            : typeof rangeOption.range == 'string'
+              ? { S: `${rangeOption.range}` }
+              : { N: `${rangeOption.range}` },
+        }
+        : {
+          ':hashkey': typeof hash == 'string'
+            ? { S: hash }
+            : { N: `${hash}` },
+        },
+      ExclusiveStartKey: after
         ? after
         : undefined,
       ScanIndexForward: !desc,
@@ -261,7 +256,7 @@ export class Connection {
         return reject(err)
       }
       const nodes: P[] = (result.Items || []).map((item) => {
-        return fromDynamoAttributeMap(item) as P
+        return fromDynamoMap(item) as P
       })
       if (result.LastEvaluatedKey) {
         return resolve({
@@ -275,16 +270,14 @@ export class Connection {
     }))
   }
 
-  public count<P = any>(options: RepositoryOptions<P>, indexName?: string, hash: string | number = ""): Promise<number> {
+  public count<P = any>(options: RepositoryOptions<P>, indexName?: string, hash: string | number = ''): Promise<number> {
     const hashKey = indexName
       ? (() => {
         const indexHash = options.indexes.find(({ name }) => name == indexName)!.hashKey
         if (indexHash.generated) {
-          return indexHash.generated.key!
+          return indexHash.generated.key
         }
-        else {
-          return indexHash.sourceKey!
-        }
+        return indexHash.sourceKey!
       })()
       : options.hashKey.sourceKey
 
@@ -292,13 +285,13 @@ export class Connection {
       this.client.query({
         TableName: `${options.tableName}`,
         IndexName: indexName ? indexName : undefined,
-        Select: "COUNT",
-        KeyConditionExpression: `#hashkey = :hashkey`,
+        Select: 'COUNT',
+        KeyConditionExpression: '#hashkey = :hashkey',
         ExpressionAttributeNames: {
-          "#hashkey": hashKey,
+          '#hashkey': hashKey,
         },
         ExpressionAttributeValues: {
-          ":hashkey": toDynamoAttribute(hash),
+          ':hashkey': toDynamo(hash),
         },
       }, (err, result) => {
         if (err) {
@@ -312,13 +305,13 @@ export class Connection {
   public deleteItem<P = any>(options: RepositoryOptions<P>, hashKey: string, rangeKey?: string): Promise<boolean> {
     return new Promise((resolve, reject) => this.client.deleteItem({
       TableName: `${options.tableName}`,
-      Key: options.rangeKey 
+      Key: options.rangeKey
         ? {
-          [options.hashKey.sourceKey]: toDynamoAttribute(hashKey),
-          [options.rangeKey.sourceKey]: toDynamoAttribute(rangeKey),
-        } 
+          [options.hashKey.sourceKey]: toDynamo(hashKey),
+          [options.rangeKey.sourceKey]: toDynamo(rangeKey),
+        }
         : {
-          [options.hashKey.sourceKey]: toDynamoAttribute(hashKey),
+          [options.hashKey.sourceKey]: toDynamo(hashKey),
         },
     }, (err) => {
       if (err) {
@@ -338,15 +331,15 @@ export class Connection {
           [`${options.tableName}`]: cursors.map(({ hash, range }): WriteRequest => {
             return {
               DeleteRequest: {
-                Key: options.rangeKey 
+                Key: options.rangeKey
                   ? {
-                    [options.hashKey.sourceKey]: toDynamoAttribute(hash),
-                    [options.rangeKey.sourceKey]: toDynamoAttribute(range),
+                    [options.hashKey.sourceKey]: toDynamo(hash),
+                    [options.rangeKey.sourceKey]: toDynamo(range),
                   }
                   : {
-                    [options.hashKey.sourceKey]: toDynamoAttribute(hash),
+                    [options.hashKey.sourceKey]: toDynamo(hash),
                   },
-              }
+              },
             }
           }),
         },
@@ -356,14 +349,14 @@ export class Connection {
         }
         if (result.UnprocessedItems && result.UnprocessedItems[`${options.tableName}`]) {
           const failKeys = result.UnprocessedItems[`${options.tableName}`]
-            .filter(({DeleteRequest}) => DeleteRequest)
-            .map(({DeleteRequest}) => DeleteRequest!.Key)
+            .filter(({ DeleteRequest }) => DeleteRequest)
+            .map(({ DeleteRequest }) => DeleteRequest!.Key)
           resolve(cursors.map((cursor) => {
             const foundFailKey = failKeys.find((failKey) => failKey[options.hashKey.sourceKey].S === cursor.hash && (
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === cursor.range)) || 
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === cursor.range))
+              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === cursor.range))
+              || (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === cursor.range))
             ))
-            return foundFailKey ? true : false
+            return !!foundFailKey
           }))
         }
         resolve(cursors.map(() => true))

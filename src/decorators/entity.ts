@@ -1,14 +1,21 @@
-import { toUnderscore } from "relater/lib/utils/to-underscore"
-import { EntityDecoratorFactory } from "../interfaces/decorator"
-import { metadataEntities } from "../metadata"
+import { MetadataStorage } from '../metadata/storage'
 
+export interface EntityParams {
+  name?: string
+  metadataStorage?: MetadataStorage
+}
 
-export const Entity: EntityDecoratorFactory = (options = {}) => (target) => {
-  if (metadataEntities.get(target)) {
-    throw new Error("entity decoartor must be one")
+export function Entity(params: EntityParams): ClassDecorator {
+  return (target) => {
+    const metadataEntities = (params.metadataStorage ?? MetadataStorage.getGlobalStorage()).entities
+
+    if (metadataEntities.get(target)) {
+      throw new Error('entity decoartor must be one')
+    }
+
+    metadataEntities.set(target, {
+      target,
+      name: params.name ?? target.name,
+    })
   }
-  metadataEntities.set(target, {
-    target,
-    name: options.name || toUnderscore(target.name)
-  })
 }

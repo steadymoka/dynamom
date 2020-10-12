@@ -1,145 +1,163 @@
-import { createOptions } from "../../lib/repository/create-options"
-import { User } from "../stubs/user"
-import { Post } from "../stubs/post"
+import { createOptions } from '../../lib/repository/create-options'
+import { User } from '../stubs/user'
+import { Post } from '../stubs/post'
 
 
-describe("testsuite of repository/create-options", () => {
-  it("test createOptions of User", () => {
+describe('testsuite of repository/create-options', () => {
+  it('test createOptions of User', () => {
     expect(createOptions(User)).toEqual({
-      tableName: "users",
-      ctor: User,
+      target: User,
+      tableName: 'users',
+      columns: [
+        {
+          property: 'id',
+          name: 'user_id',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: User,
+        },
+        {
+          property: 'username',
+          name: 'username',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: User,
+        },
+        {
+          property: 'email',
+          name: 'email',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: User,
+        },
+        {
+          property: 'type',
+          name: 'type_tt',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: User,
+        },
+        {
+          property: 'createdAt',
+          name: 'created_at',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: User,
+        },
+      ],
       generatedValues: [
         {
-          property: "id",
-          sourceKey: "user_id",
-          strategy: "uuid",
+          property: 'id',
+          sourceKey: 'user_id',
+          strategy: 'uuid',
         }
       ],
       hashKey: {
-        property: "id",
-        sourceKey: "user_id",
+        property: 'id',
+        sourceKey: 'user_id',
       },
       rangeKey: {
-        property: "username",
-        sourceKey: "username",
+        property: 'username',
+        sourceKey: 'username',
       },
       indexes: [
         {
-          name: "index__created_at__user_id",
+          name: 'index__created_at__user_id',
           hashKey: {
-            property: "createdAt",
-            sourceKey: "created_at",
+            property: 'createdAt',
+            sourceKey: 'created_at',
             generated: undefined,
           },
           rangeKey: {
-            property: "id",
-            sourceKey: "user_id",
+            property: 'id',
+            sourceKey: 'user_id',
             generated: undefined,
           },
         },
         {
-          name: "index__email",
+          name: 'index__email',
           hashKey: {
-            property: "email",
-            sourceKey: "email",
+            property: 'email',
+            sourceKey: 'email',
             generated: undefined,
           },
           rangeKey: undefined,
         },
       ],
-      columns: [
-        {
-          property: "id",
-          sourceKey: "user_id",
-          type: "string",
-        },
-        {
-          property: "username",
-          sourceKey: "username",
-          type: "string",
-        },
-        {
-          property: "email",
-          sourceKey: "email",
-          type: "string",
-        },
-        {
-          property: "type",
-          sourceKey: "type_tt",
-          type: "string",
-        },
-        {
-          property: "createdAt",
-          sourceKey: "created_at",
-          type: "string",
-        },
-      ],
-      relations: [],
     })
   })
 
-  it("test createOptions of posts", () => {
+  it('test createOptions of posts', () => {
     expect(createOptions(Post)).toEqual({
-      tableName: "posts",
-      ctor: Post,
+      target: Post,
+      tableName: 'posts',
+      columns: [
+        {
+          property: 'pk',
+          name: 'pk',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: Post,
+        },
+        {
+          property: 'id',
+          name: 'id',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: Post,
+        },
+        {
+          property: 'userId',
+          name: 'user_id',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: Post,
+        },
+        {
+          property: 'content',
+          name: 'content',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: Post,
+        },
+        {
+          property: 'createdAt',
+          name: 'created_at',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: Post,
+        },
+      ],
       generatedValues: [
         {
-          property: "id",
-          sourceKey: "id",
-          strategy: "kuuid",
+          property: 'id',
+          sourceKey: 'id',
+          strategy: 'kuuid',
         }
       ],
       hashKey: {
-        property: "pk",
-        sourceKey: "pk",
+        property: 'pk',
+        sourceKey: 'pk',
       },
       rangeKey: {
-        property: "id",
-        sourceKey: "id",
+        property: 'id',
+        sourceKey: 'id',
       },
       indexes: [
         {
-          name: "index__user_id__id",
+          name: 'index__user_id__id',
           hashKey: {
-            property: "userId",
-            sourceKey: "user_id",
+            property: 'userId',
+            sourceKey: 'user_id',
             generated: undefined
           },
           rangeKey: {
-            property: "id",
-            sourceKey: "id",
+            property: 'id',
+            sourceKey: 'id',
             generated: undefined,
           }
         },
       ],
-      columns: [
-        {
-          property: "pk",
-          sourceKey: "pk",
-          type: "string",
-        },
-        {
-          property: "id",
-          sourceKey: "id",
-          type: "string",
-        },
-        {
-          property: "userId",
-          sourceKey: "user_id",
-          type: "string",
-        },
-        {
-          property: "content",
-          sourceKey: "content",
-          type: "string",
-        },
-        {
-          property: "createdAt",
-          sourceKey: "created_at",
-          type: "string",
-        },
-      ],
-      relations: [],
     })
   })
 })

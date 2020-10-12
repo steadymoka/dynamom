@@ -1,4 +1,7 @@
 {
+  "ignore": [
+    "**/*.test.ts"
+  ],
   "presets": [
     ["@babel/preset-env", {
       "targets": "maintained node versions",

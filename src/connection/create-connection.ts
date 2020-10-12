@@ -1,5 +1,5 @@
-import { DynamoDB } from "aws-sdk"
-import { Connection } from "./connection"
+import { DynamoDB } from 'aws-sdk'
+import { Connection } from './connection'
 
 
 export function createConnection(options: { dynamodb?: DynamoDB.Types.ClientConfiguration }): Connection {

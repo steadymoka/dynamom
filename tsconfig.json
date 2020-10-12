@@ -5,18 +5,22 @@
     "moduleResolution": "node",
     "lib": [
       "es2017",
-      "dom"
+      "esnext.asynciterable"
     ],
     "outDir": "lib",
     "declaration": true,
     "pretty": true,
     "sourceMap": true,
     "strict": true,
-    "noImplicitReturns": true,
     "esModuleInterop": true,
+    "noImplicitReturns": true,
     "experimentalDecorators": true
   },
+  "files": [
+    "types/jest.d.ts"
+  ],
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "test/**/*",
   ]
 }

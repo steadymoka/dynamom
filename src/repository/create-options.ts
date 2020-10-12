@@ -1,122 +1,123 @@
-import { ConstructType, createOptions as createRelaterOptions, Identifier } from "relater"
-import { RepositoryOptions } from "../interfaces/repository"
-import { metadataHashKeys, metadataEntities, metadataGeneratedValues, metadataIndexes, metadataRangeKeys } from "../metadata"
+import { ConstructType } from '../interfaces/common'
+import { RepositoryOptions } from '../interfaces/repository'
+import { MetadataStorage } from '../metadata/storage'
 
-export function createOptions<Entity>(ctor: ConstructType<Entity>): RepositoryOptions<Entity> {
-  const entity = metadataEntities.get(ctor)
+export function createOptions<Entity>(ctor: ConstructType<Entity>, meatadataStorage?: MetadataStorage): RepositoryOptions<Entity> {
+  meatadataStorage = meatadataStorage ?? MetadataStorage.getGlobalStorage()
+  const entity = meatadataStorage.entities.get(ctor)
   if (!entity) {
-    throw new Error("not defined entity")
+    throw new Error('not defined entity')
   }
-  const relaterOptions = createRelaterOptions(ctor)
+  const columns = meatadataStorage.columns.get(ctor) ?? []
 
-  const hashKey = metadataHashKeys.get(ctor)
+  const hashKey = meatadataStorage.hashKeys.get(ctor)
   if (!hashKey) {
-    throw new Error("not defined hashKey")
+    throw new Error('not defined hashKey')
   }
-  const hashKeyColumn = relaterOptions.columns.find((column) => column.property === hashKey.property)
+  const hashKeyColumn = columns.find((column) => column.property === hashKey.property)
   if (!hashKeyColumn) {
-    throw new Error("not defined hashKey column")
+    throw new Error('not defined hashKey column')
   }
-  const rangeKey = metadataRangeKeys.get(ctor)
+
+  const rangeKey = meatadataStorage.rangeKeys.get(ctor)
   let rangeKeyColumn
   if (rangeKey) {
-    rangeKeyColumn = relaterOptions.columns.find((column) => column.property === rangeKey.property)
+    rangeKeyColumn = columns.find((column) => column.property === rangeKey.property)
     if (!rangeKeyColumn) {
-      throw new Error("not defined rangeKey column")
+      throw new Error('not defined rangeKey column')
     }
   }
 
   return {
+    target: entity.target,
     tableName: entity.name,
+    columns,
     hashKey: {
       property: hashKey.property,
-      sourceKey: hashKeyColumn.sourceKey,
+      sourceKey: hashKeyColumn.name,
     },
     rangeKey: rangeKeyColumn ? {
       property: rangeKey!.property,
-      sourceKey: rangeKeyColumn.sourceKey,
+      sourceKey: rangeKeyColumn.name,
     } : undefined,
-    indexes: (metadataIndexes.get(ctor) || []).map(({ name, hash, range }) => {
+    indexes: (meatadataStorage.indexes.get(ctor) || []).map(({ name, hash, range }) => {
       if (hash.keys.length == 0) {
-        throw new Error("not defined index hashKey")  
+        throw new Error('not defined index hashKey')
       }
-      let hashProperty: Identifier | undefined
+      let hashProperty: string | symbol | undefined
       let hashSourceKey: string | undefined
       let generatedHashKey: string | undefined
 
-      let rangeProperty: Identifier | undefined
+      let rangeProperty: string | symbol | undefined
       let rangeSourceKey: string | undefined
       let generatedRangeKey: string | undefined
 
-      const hashSourceKeys = hash.keys.map((key) => relaterOptions.columns.find(({ property }) => property === key)!.sourceKey)
-      const rangeSourceKeys = range.keys.map((key) => relaterOptions.columns.find(({ property }) => property === key)!.sourceKey)
-      
+      const hashSourceKeys = hash.keys.map((key) => columns.find(({ property }) => property === key)!.name)
+      const rangeSourceKeys = range.keys.map((key) => columns.find(({ property }) => property === key)!.name)
+
       if (hash.keys.length == 1) {
-        const hashColumn = relaterOptions.columns.find(({ property }) => property === hash.keys[0])
+        const hashColumn = columns.find(({ property }) => property === hash.keys[0])
         if (!hashColumn) {
-          throw new Error("not defined index hash column") 
+          throw new Error('not defined index hash column')
         }
         hashProperty = hashColumn.property
-        hashSourceKey = hashColumn.sourceKey
-      }
-      else {
-        generatedHashKey = hashSourceKeys.join("__")
+        hashSourceKey = hashColumn.name
+      } else {
+        generatedHashKey = hashSourceKeys.join('__')
       }
 
       if (range) {
         if (range.keys.length == 1) {
-          const rangeColumn = relaterOptions.columns.find(({ property }) => property === range.keys[0])
+          const rangeColumn = columns.find(({ property }) => property === range.keys[0])
           if (!rangeColumn) {
-            throw new Error("not defined index range column") 
+            throw new Error('not defined index range column')
           }
           rangeProperty = rangeColumn.property
-          rangeSourceKey = rangeColumn.sourceKey
-        }
-        else {
-          generatedRangeKey = rangeSourceKeys.join("__")
+          rangeSourceKey = rangeColumn.name
+        } else {
+          generatedRangeKey = rangeSourceKeys.join('__')
         }
       }
 
       return {
-        name: name ? name : `index__${hashSourceKeys.join("__")}${range.keys.length > 0 ? `__${rangeSourceKeys.join("__")}` : ""}`,
+        name: name ? name : `index__${hashSourceKeys.join('__')}${range.keys.length > 0 ? `__${rangeSourceKeys.join('__')}` : ''}`,
         hashKey: {
           property: hashProperty,
           sourceKey: hashSourceKey,
-          generated: generatedHashKey ? 
-            {
+          generated: generatedHashKey
+            ? {
               key: generatedHashKey,
               properties: hash.keys,
               sourceKeys: hashSourceKeys,
-            } :
-            undefined,
+            }
+            : undefined,
         },
-        rangeKey: range.keys.length > 0 ? 
-          {
+        rangeKey: range.keys.length > 0
+          ? {
             property: rangeProperty,
             sourceKey: rangeSourceKey,
-            generated: generatedRangeKey ? 
-              {
+            generated: generatedRangeKey
+              ? {
                 key: generatedRangeKey,
                 properties: range.keys,
                 sourceKeys: rangeSourceKeys,
-              } :
-              undefined,
-          } :
-          undefined,
+              }
+              : undefined,
+          }
+          : undefined,
       }
     }),
-    generatedValues: (metadataGeneratedValues.get(ctor) || []).map((value) => {
-      const column = relaterOptions.columns.find(({ property }) => property === value.property)
+    generatedValues: (meatadataStorage.generatedValues.get(ctor) || []).map((value) => {
+      const column = columns.find(({ property }) => property === value.property)
       if (!column) {
-        throw new Error("not defined index range column")
+        throw new Error('not defined index range column')
       }
-      
+
       return {
         property: value.property,
-        sourceKey: column.sourceKey,
+        sourceKey: column.name,
         strategy: value.strategy,
       }
     }),
-    ...relaterOptions,
   }
 }

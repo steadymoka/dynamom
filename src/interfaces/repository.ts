@@ -1,41 +1,43 @@
-import { Identifier, RelaterOptions } from "relater"
-import { RagneOption } from "./range"
+import { MetadataColumn } from './metadata'
+import { RagneOption } from './range'
 
-export interface RepositoryOptions<P> extends RelaterOptions<P> {
+export interface RepositoryOptions<Entity> {
+  target: any
   tableName: string
+  columns: MetadataColumn[]
   hashKey: {
-    property: Identifier
-    sourceKey: string
+    property: string | symbol,
+    sourceKey: string,
   }
   rangeKey?: {
-    property: Identifier
-    sourceKey: string
+    property: string | symbol,
+    sourceKey: string,
   }
   indexes: {
-    name: string
+    name: string,
     hashKey: {
-      property?: Identifier
-      sourceKey?: string
+      property?: string | symbol,
+      sourceKey?: string,
       generated?: {
-        key: string
-        properties: string[]
-        sourceKeys: string[]
-      }
-    }
+        key: string,
+        properties: string[],
+        sourceKeys: string[],
+      },
+    },
     rangeKey?: {
-      property?: Identifier
-      sourceKey?: string
+      property?: string | symbol,
+      sourceKey?: string,
       generated?: {
-        key: string
-        properties: string[]
-        sourceKeys: string[]
-      }
-    }
+        key: string,
+        properties: string[],
+        sourceKeys: string[],
+      },
+    },
   }[]
   generatedValues: {
-    property: Identifier
-    sourceKey: string
-    strategy: string
+    property: string | symbol,
+    sourceKey: string,
+    strategy: string,
   }[]
 }
 

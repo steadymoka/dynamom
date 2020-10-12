@@ -1,24 +1,24 @@
-import { Column, Index, Entity, GeneratedValue, HashKey, RangeKey } from "../../lib"
+import { Column, Index, Entity, GeneratedValue, HashKey, RangeKey } from '../../lib'
 
 
-@Entity({name: "categories"})
+@Entity({name: 'categories'})
 export class Category {
 
-  @Column({ name: "hashKey" })
+  @Column({ name: 'hashKey' })
   @HashKey()
   public pk!: number
 
   @Column()
-  @RangeKey() @GeneratedValue({ strategy: "kuuid" })
+  @RangeKey() @GeneratedValue({ strategy: 'kuuid' })
   public id!: string
 
-  @Column({ name: "user_id" })
+  @Column({ name: 'user_id' })
   public userId!: string
 
   @Column()
   public title!: string
 
-  @Column({ name: "created_at"})
+  @Column({ name: 'created_at'})
   public createdAt!: number
   
 }

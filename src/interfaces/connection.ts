@@ -1,5 +1,6 @@
-import { Key } from "aws-sdk/clients/dynamodb"
-import { RagneOption } from "./range"
+import { Key } from 'aws-sdk/clients/dynamodb'
+
+import { RagneOption } from './range'
 
 export interface QueryOptions<P> {
   indexName?: string

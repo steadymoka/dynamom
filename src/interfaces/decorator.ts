@@ -1,4 +1,4 @@
-import { MaybeArray } from "relater"
+import { MaybeArray } from './common'
 
 export interface EntityDecoratorOptions {
   name?: string
