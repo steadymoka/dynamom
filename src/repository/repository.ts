@@ -34,7 +34,7 @@ export class Repository<Entity extends object> {
     return rows.map((row: any) => {
       const entity: any = {}
       for (const column of this.options.columns) {
-        if (row[column.name]) {
+        if (undefined !== row[column.name]) {
           entity[column.property] = row[column.name]
         }
       }
@@ -55,7 +55,7 @@ export class Repository<Entity extends object> {
     return entities.map((entity) => {
       const row: any = {}
       for (const column of this.options.columns) {
-        if (entity[column.property]) {
+        if (undefined !== entity[column.property]) {
           row[column.name] = entity[column.property]
         }
       }

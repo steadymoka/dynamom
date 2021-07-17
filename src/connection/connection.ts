@@ -69,8 +69,8 @@ export class Connection {
 
           resolve(rows.map(({ cursor: { hash, range } }) => {
             const foundFailKey = failKeys.find((failKey) => failKey[options.hashKey.sourceKey].S === hash && (
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === range))
-              || (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === range))
+              !!options.rangeKey && failKey[options.rangeKey.sourceKey].S === range
+              || !!options.rangeKey && failKey[options.rangeKey.sourceKey].N === range
             ))
             return !!foundFailKey
           }))
@@ -167,14 +167,14 @@ export class Connection {
     return new Promise((resolve, reject) => this.client.batchGetItem({
       RequestItems: {
         [`${options.tableName}`]: {
-          Keys: cursors.map((cursor) => (options.rangeKey
+          Keys: cursors.map((cursor) => options.rangeKey
             ? {
               [options.hashKey.sourceKey]: toDynamo(cursor.hash),
               [options.rangeKey.sourceKey]: toDynamo(cursor.range),
             }
             : {
               [options.hashKey.sourceKey]: toDynamo(cursor.hash),
-            })),
+            }),
         },
       },
     }, (err, result) => {
@@ -233,17 +233,17 @@ export class Connection {
         },
       ExpressionAttributeValues: rangeOption
         ? {
-          ':hashkey': typeof hash == 'string'
+          ':hashkey': typeof hash === 'string'
             ? { S: hash }
             : { N: `${hash}` },
           ':rangekey': isGeneratedRangeKey
             ? { S: `${rangeOption.range}__` }
-            : typeof rangeOption.range == 'string'
+            : typeof rangeOption.range === 'string'
               ? { S: `${rangeOption.range}` }
               : { N: `${rangeOption.range}` },
         }
         : {
-          ':hashkey': typeof hash == 'string'
+          ':hashkey': typeof hash === 'string'
             ? { S: hash }
             : { N: `${hash}` },
         },
@@ -325,7 +325,7 @@ export class Connection {
     if (cursors.length === 0) {
       return Promise.resolve([])
     }
-    return new Promise(((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       this.client.batchWriteItem({
         RequestItems: {
           [`${options.tableName}`]: cursors.map(({ hash, range }): WriteRequest => {
@@ -353,15 +353,15 @@ export class Connection {
             .map(({ DeleteRequest }) => DeleteRequest!.Key)
           resolve(cursors.map((cursor) => {
             const foundFailKey = failKeys.find((failKey) => failKey[options.hashKey.sourceKey].S === cursor.hash && (
-              (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].S === cursor.range))
-              || (!!options.rangeKey && (failKey[options.rangeKey.sourceKey].N === cursor.range))
+              !!options.rangeKey && failKey[options.rangeKey.sourceKey].S === cursor.range
+              || !!options.rangeKey && failKey[options.rangeKey.sourceKey].N === cursor.range
             ))
             return !!foundFailKey
           }))
         }
         resolve(cursors.map(() => true))
       }).promise()
-    }))
+    })
   }
 
 }

@@ -1,7 +1,7 @@
 import { Column, Index, Entity, GeneratedValue, HashKey, RangeKey } from '../../lib'
 
 
-@Entity({name: 'posts'})
+@Entity({ name: 'posts' })
 @Index<Post>({ hash: ['userId'], range: ['id'] })
 export class Post {
 
@@ -19,7 +19,10 @@ export class Post {
   @Column()
   public content!: string
 
-  @Column({ name: 'created_at'})
+  @Column()
+  public enable!: boolean
+
+  @Column({ name: 'created_at' })
   public createdAt!: number
-  
+
 }

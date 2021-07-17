@@ -1,6 +1,6 @@
 import { createOptions } from '../../lib/repository/create-options'
-import { User } from '../stubs/user'
 import { Post } from '../stubs/post'
+import { User } from '../stubs/user'
 
 
 describe('testsuite of repository/create-options', () => {
@@ -50,7 +50,7 @@ describe('testsuite of repository/create-options', () => {
           property: 'id',
           sourceKey: 'user_id',
           strategy: 'uuid',
-        }
+        },
       ],
       hashKey: {
         property: 'id',
@@ -121,6 +121,13 @@ describe('testsuite of repository/create-options', () => {
           target: Post,
         },
         {
+          property: 'enable',
+          name: 'enable',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: Post,
+        },
+        {
           property: 'createdAt',
           name: 'created_at',
           onCreate: undefined,
@@ -133,7 +140,7 @@ describe('testsuite of repository/create-options', () => {
           property: 'id',
           sourceKey: 'id',
           strategy: 'kuuid',
-        }
+        },
       ],
       hashKey: {
         property: 'pk',
@@ -149,13 +156,13 @@ describe('testsuite of repository/create-options', () => {
           hashKey: {
             property: 'userId',
             sourceKey: 'user_id',
-            generated: undefined
+            generated: undefined,
           },
           rangeKey: {
             property: 'id',
             sourceKey: 'id',
             generated: undefined,
-          }
+          },
         },
       ],
     })

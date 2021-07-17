@@ -41,7 +41,7 @@ export function createOptions<Entity>(ctor: ConstructType<Entity>, meatadataStor
       sourceKey: rangeKeyColumn.name,
     } : undefined,
     indexes: (meatadataStorage.indexes.get(ctor) || []).map(({ name, hash, range }) => {
-      if (hash.keys.length == 0) {
+      if (hash.keys.length === 0) {
         throw new Error('not defined index hashKey')
       }
       let hashProperty: string | symbol | undefined
@@ -55,7 +55,7 @@ export function createOptions<Entity>(ctor: ConstructType<Entity>, meatadataStor
       const hashSourceKeys = hash.keys.map((key) => columns.find(({ property }) => property === key)!.name)
       const rangeSourceKeys = range.keys.map((key) => columns.find(({ property }) => property === key)!.name)
 
-      if (hash.keys.length == 1) {
+      if (hash.keys.length === 1) {
         const hashColumn = columns.find(({ property }) => property === hash.keys[0])
         if (!hashColumn) {
           throw new Error('not defined index hash column')

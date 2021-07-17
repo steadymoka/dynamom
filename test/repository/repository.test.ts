@@ -19,7 +19,7 @@ import { Post } from '../stubs/post'
 import { User } from '../stubs/user'
 
 
-const range = (start: number, end: number) => Array.from({ length: (end - start) }, (_, k) => k + start)
+const range = (start: number, end: number) => Array.from({ length: end - start }, (_, k) => k + start)
 const delay = (time: any) => new Promise(res => setTimeout(res, time))
 
 function encodeBase64(cursor: Key): string {
@@ -47,8 +47,8 @@ describe('testsuite of repository/repository', () => {
     const result = await client.getItem({
       TableName: 'users',
       Key: {
-        ['user_id']: { S: user.id },
-        ['username']: { S: user.username },
+        user_id: { S: user.id },
+        username: { S: user.username },
       },
     }).promise()
 
@@ -65,7 +65,7 @@ describe('testsuite of repository/repository', () => {
   it('test create only hashKey', async () => {
     const connection = await getSafeConnection('movies')
     const client = connection.client
-    const repository = new Repository(connection, createOptions(Movie))
+    const repository = new Repository<Movie>(connection, createOptions(Movie))
     const fakeMovie = createFakeMovie()
 
     const movie = await repository.create(fakeMovie)
@@ -83,7 +83,7 @@ describe('testsuite of repository/repository', () => {
     const result = await client.getItem({
       TableName: 'movies',
       Key: {
-        ['id']: { S: movie.id },
+        id: { S: movie.id },
       },
     }).promise()
 
@@ -105,17 +105,17 @@ describe('testsuite of repository/repository', () => {
     const fakeUser = createFakeUser()
 
     const user = await repository.create(fakeUser)
-    const foundUser_01 = await repository.findOne({ hash: user.id, range: user.username })
+    const foundUser01 = await repository.findOne({ hash: user.id, range: user.username })
 
-    expect(foundUser_01).toEqual(user)
-    expect(foundUser_01).toEqual({
+    expect(foundUser01).toEqual(user)
+    expect(foundUser01).toEqual({
       id: user.id,
       username: fakeUser.username,
       email: fakeUser.email,
       type: fakeUser.type,
       createdAt: fakeUser.createdAt,
     })
-    expect(foundUser_01).toBeInstanceOf(User)
+    expect(foundUser01).toBeInstanceOf(User)
   })
 
 
@@ -129,7 +129,7 @@ describe('testsuite of repository/repository', () => {
     const foundUsers = await repository.findOnes(users.map(({ id, username }) => { return { hash: id, range: username } }))
 
     expect(
-      foundUsers!.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
+      foundUsers!.sort((a: any, b: any) => a.createdAt < b.createdAt ? 1 : -1)
     ).toEqual(
       users.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
     )
@@ -145,9 +145,9 @@ describe('testsuite of repository/repository', () => {
       if (i == 2 || i == 3 || i == 5) {
         return repository.create(createFakePost('moka'))
       }
-      else {
-        return repository.create(createFakePost())
-      }
+
+      return repository.create(createFakePost())
+
     }))
 
     expect(await repository.count({ hash: 'all' })).toEqual(10)
@@ -249,11 +249,11 @@ describe('testsuite of repository/repository', () => {
     const comments = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakeComment()) }))
     const sortedComments = comments.sort((a, b) => a.createdAt > b.createdAt ? 1 : -1) // 오름차순
     expect(comments.length).toEqual(10)
-    
-    const result1 = await repository.retrieve({ 
-      hash: 1, 
+
+    const result1 = await repository.retrieve({
+      hash: 1,
       rangeOption: new BiggerThanRange(sortedComments[6].type),
-      desc: false
+      desc: false,
     })
     expect(result1.nodes.length).toEqual(3)
 
@@ -261,7 +261,7 @@ describe('testsuite of repository/repository', () => {
       hash: 1,
       rangeOption: new BiggerThanRange(sortedComments[1].type),
       limit: 2,
-      desc: false
+      desc: false,
     })
     expect(result2.nodes.length).toEqual(2)
     expect(result2).toEqual({
@@ -273,7 +273,7 @@ describe('testsuite of repository/repository', () => {
       rangeOption: new BiggerThanRange(sortedComments[1].type),
       after: result2.endCursor,
       limit: 2,
-      desc: false
+      desc: false,
     })
     expect(result3.nodes.length).toEqual(2)
     expect(result3).toEqual({
@@ -291,9 +291,9 @@ describe('testsuite of repository/repository', () => {
       if (i == 2 || i == 3 || i == 5) {
         return repository.create(createFakePost('moka'))
       }
-      else {
-        return repository.create(createFakePost())
-      }
+
+      return repository.create(createFakePost())
+
     }))
     const sortedPosts = posts.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
 
@@ -302,8 +302,8 @@ describe('testsuite of repository/repository', () => {
 
     expect(result1).toEqual({
       nodes: [sortedPosts.filter((item) => item.userId == 'moka')[0],
-      sortedPosts.filter((item) => item.userId == 'moka')[1],
-      sortedPosts.filter((item) => item.userId == 'moka')[2]],
+        sortedPosts.filter((item) => item.userId == 'moka')[1],
+        sortedPosts.filter((item) => item.userId == 'moka')[2]],
     })
 
     const result2 = await repository.retrieve({ indexName: 'index__user_id__id', hash: 'moka', limit: 2, desc: true })
@@ -327,9 +327,9 @@ describe('testsuite of repository/repository', () => {
       if (i == 2 || i == 3 || i == 5 || i == 6 || i == 7) {
         return repository.create(createFakeMovie('moka', 'title!!'))
       }
-      else {
-        return repository.create(createFakeMovie())
-      }
+
+      return repository.create(createFakeMovie())
+
     }))
     const sortedMovies = movies.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
     const filteredMovies = sortedMovies.filter(({ userId }) => userId == 'moka')
@@ -337,9 +337,9 @@ describe('testsuite of repository/repository', () => {
     const result1 = await repository.retrieve({
       indexName: 'index__index_key__user_id__title',
       hash: 'all',
-      rangeOption: new DefaultRange(`moka__title!!`),
+      rangeOption: new DefaultRange('moka__title!!'),
       limit: 3,
-      desc: true
+      desc: true,
     })
 
     expect(result1.nodes).toEqual(filteredMovies.slice(0, 3))
@@ -355,12 +355,12 @@ describe('testsuite of repository/repository', () => {
       if (i == 2 || i == 3 || i == 5) {
         return repository.create(createFakePost('moka'))
       }
-      else if (i == 4) {
+      if (i == 4) {
         return repository.create(createFakePost('moka_a'))
       }
-      else {
-        return repository.create(createFakePost())
-      }
+
+      return repository.create(createFakePost())
+
     }))
 
     const savedPosts = posts.filter(({ userId }) => userId == 'moka')
@@ -382,6 +382,7 @@ describe('testsuite of repository/repository', () => {
 
     const post = await repository.create(fakePost)
     post.content = 'content+update@@moka'
+    post.enable = false
 
     expect(await repository.persist(post)).toBeUndefined() // return void
 
@@ -389,6 +390,7 @@ describe('testsuite of repository/repository', () => {
 
     if (foundPost) {
       expect(foundPost.content).toEqual('content+update@@moka')
+      expect(foundPost.enable).toEqual(false)
       expect(foundPost).toEqual(post)
     }
   })
@@ -407,8 +409,8 @@ describe('testsuite of repository/repository', () => {
     expect(await client.getItem({
       TableName: 'users',
       Key: {
-        ['user_id']: { S: user.id },
-        ['username']: { S: user.username },
+        user_id: { S: user.id },
+        username: { S: user.username },
       },
     }).promise()).not.toEqual(null)
 
@@ -419,8 +421,8 @@ describe('testsuite of repository/repository', () => {
     expect(await client.getItem({
       TableName: 'users',
       Key: {
-        ['user_id']: { S: user.id },
-        ['username']: { S: user.username },
+        user_id: { S: user.id },
+        username: { S: user.username },
       },
     }).promise()).toEqual({})
   })
