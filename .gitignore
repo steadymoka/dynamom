@@ -2,3 +2,12 @@
 /lib
 
 yarn-error.log
+
+# Obsidian (docs/dynamom)
+docs/dynamom/.obsidian/workspace.json
+docs/dynamom/.obsidian/workspace-mobile.json
+docs/dynamom/.obsidian/graph.json
+docs/dynamom/.obsidian/hotkeys.json
+docs/dynamom/.obsidian/cache
+docs/dynamom/.obsidian/plugins/
+docs/

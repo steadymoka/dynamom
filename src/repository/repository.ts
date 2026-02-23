@@ -303,6 +303,8 @@ export class Repository<Entity extends object> {
     property: K,
     values: Entity[K] extends Set<infer T> ? Set<T> : never,
   ): Promise<void> {
+    if ((values as Set<any>).size === 0) return
+
     const hash = (entity as any)[this.options.hashKey.property]
     if (!hash) {
       throw new Error('hashKey not defined!')
@@ -326,6 +328,8 @@ export class Repository<Entity extends object> {
     property: K,
     values: Entity[K] extends Set<infer T> ? Set<T> : never,
   ): Promise<void> {
+    if ((values as Set<any>).size === 0) return
+
     const hash = (entity as any)[this.options.hashKey.property]
     if (!hash) {
       throw new Error('hashKey not defined!')
@@ -341,6 +345,53 @@ export class Repository<Entity extends object> {
       node: {} as any,
     }, {
       deleteFromSet: { [columnName]: values } as Record<string, Set<string> | Set<number>>,
+    })
+  }
+
+  public async appendToList<K extends string & keyof Entity>(
+    entity: Entity,
+    property: K,
+    values: Entity[K] extends (infer T)[] ? T[] : never,
+    prepend: boolean = false,
+  ): Promise<void> {
+    const hash = (entity as any)[this.options.hashKey.property]
+    if (!hash) {
+      throw new Error('hashKey not defined!')
+    }
+    const range = this.options.rangeKey
+      ? (entity as any)[this.options.rangeKey.property]
+      : undefined
+
+    const columnName = this.propertyToColumn(property)
+
+    await this.connection.updateItem(this.options, {
+      cursor: range ? { hash, range } : { hash },
+      node: {} as any,
+    }, {
+      appendToList: { [columnName]: { values, prepend } },
+    })
+  }
+
+  public async setIfNotExists<K extends string & keyof Entity>(
+    entity: Entity,
+    property: K,
+    value: Entity[K],
+  ): Promise<void> {
+    const hash = (entity as any)[this.options.hashKey.property]
+    if (!hash) {
+      throw new Error('hashKey not defined!')
+    }
+    const range = this.options.rangeKey
+      ? (entity as any)[this.options.rangeKey.property]
+      : undefined
+
+    const columnName = this.propertyToColumn(property)
+
+    await this.connection.updateItem(this.options, {
+      cursor: range ? { hash, range } : { hash },
+      node: {} as any,
+    }, {
+      setIfNotExists: { [columnName]: value },
     })
   }
 
@@ -472,7 +523,15 @@ export class Repository<Entity extends object> {
     const hashKey = this.options.hashKey.sourceKey
     const rangeKey = this.options.rangeKey?.sourceKey
     const node = this.toPlain(entity)
-    const keys = Object.keys(node).filter(k => k !== hashKey && k !== rangeKey)
+    const removeSet = new Set(updateOpts?.remove ?? [])
+    const addSet = new Set(Object.keys(updateOpts?.add ?? {}))
+    const deleteFromSetKeys = new Set(Object.keys(updateOpts?.deleteFromSet ?? {}))
+    const appendToListKeys = new Set(Object.keys(updateOpts?.appendToList ?? {}))
+    const setIfNotExistsKeys = new Set(Object.keys(updateOpts?.setIfNotExists ?? {}))
+    const keys = Object.keys(node)
+      .filter(k => k !== hashKey && k !== rangeKey)
+      .filter(k => !removeSet.has(k) && !addSet.has(k) && !deleteFromSetKeys.has(k))
+      .filter(k => !appendToListKeys.has(k) && !setIfNotExistsKeys.has(k))
 
     const Key = this.options.rangeKey
       ? {
@@ -509,6 +568,34 @@ export class Repository<Entity extends object> {
         expressionNames[namePlaceholder] = attr
         expressionValues[valPlaceholder] = toDynamo(amount)
         addParts.push(`${namePlaceholder} ${valPlaceholder}`)
+      }
+    }
+
+    // Build list_append SET clause
+    if (updateOpts?.appendToList) {
+      for (const [attr, { values, prepend }] of Object.entries(updateOpts.appendToList)) {
+        const namePlaceholder = `#la_${attr}`
+        const valPlaceholder = `:la_${attr}`
+        const emptyPlaceholder = `:la_empty_${attr}`
+        expressionNames[namePlaceholder] = attr
+        expressionValues[valPlaceholder] = toDynamo(values)
+        expressionValues[emptyPlaceholder] = toDynamo([])
+        if (prepend) {
+          setParts.push(`${namePlaceholder} = list_append(${valPlaceholder}, if_not_exists(${namePlaceholder}, ${emptyPlaceholder}))`)
+        } else {
+          setParts.push(`${namePlaceholder} = list_append(if_not_exists(${namePlaceholder}, ${emptyPlaceholder}), ${valPlaceholder})`)
+        }
+      }
+    }
+
+    // Build if_not_exists SET clause
+    if (updateOpts?.setIfNotExists) {
+      for (const [attr, value] of Object.entries(updateOpts.setIfNotExists)) {
+        const namePlaceholder = `#ine_${attr}`
+        const valPlaceholder = `:ine_${attr}`
+        expressionNames[namePlaceholder] = attr
+        expressionValues[valPlaceholder] = toDynamo(value)
+        setParts.push(`${namePlaceholder} = if_not_exists(${namePlaceholder}, ${valPlaceholder})`)
       }
     }
 

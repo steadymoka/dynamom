@@ -21,5 +21,8 @@ export class Comment {
 
   @Column({ name: 'created_at'})
   public createdAt!: number
-  
+
+  @Column()
+  public history!: string[]
+
 }

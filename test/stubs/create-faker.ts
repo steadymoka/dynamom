@@ -17,6 +17,7 @@ export function createFakePost(user_id?: string) {
     userId: user_id ? user_id : faker.word.sample(),
     createdAt: new Date().getTime(),
     tags: new Set(['tag1', 'tag2']),
+    metadata: ['meta1', 'meta2'],
   }
 }
 

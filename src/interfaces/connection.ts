@@ -35,6 +35,8 @@ export interface UpdateItemOptions {
   remove?: string[]
   add?: Record<string, number | Set<string> | Set<number>>
   deleteFromSet?: Record<string, Set<string> | Set<number>>
+  appendToList?: Record<string, { values: any[], prepend?: boolean }>
+  setIfNotExists?: Record<string, any>
   condition?: FilterCondition
 }
 

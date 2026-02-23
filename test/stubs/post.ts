@@ -28,4 +28,7 @@ export class Post {
   @Column()
   public tags!: Set<string>
 
+  @Column()
+  public metadata!: string[]
+
 }

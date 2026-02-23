@@ -124,9 +124,12 @@ export class Connection {
     const removeSet = new Set(updateOptions?.remove ?? [])
     const addSet = new Set(Object.keys(updateOptions?.add ?? {}))
     const deleteFromSetKeys = new Set(Object.keys(updateOptions?.deleteFromSet ?? {}))
+    const appendToListKeys = new Set(Object.keys(updateOptions?.appendToList ?? {}))
+    const setIfNotExistsKeys = new Set(Object.keys(updateOptions?.setIfNotExists ?? {}))
     const keys = Object.keys(row.node as Record<string, any>)
       .filter((key) => key != hashKey && key != rangeKey)
       .filter((key) => !removeSet.has(key) && !addSet.has(key) && !deleteFromSetKeys.has(key))
+      .filter((key) => !appendToListKeys.has(key) && !setIfNotExistsKeys.has(key))
 
     const Key = rangeKey
       ? {
@@ -166,6 +169,34 @@ export class Connection {
         expressionNames[namePlaceholder] = attr
         expressionValues[valPlaceholder] = toDynamo(amount)
         addParts.push(`${namePlaceholder} ${valPlaceholder}`)
+      }
+    }
+
+    // Build list_append SET clause
+    if (updateOptions?.appendToList) {
+      for (const [attr, { values, prepend }] of Object.entries(updateOptions.appendToList)) {
+        const namePlaceholder = `#la_${attr}`
+        const valPlaceholder = `:la_${attr}`
+        const emptyPlaceholder = `:la_empty_${attr}`
+        expressionNames[namePlaceholder] = attr
+        expressionValues[valPlaceholder] = toDynamo(values)
+        expressionValues[emptyPlaceholder] = toDynamo([])
+        if (prepend) {
+          setParts.push(`${namePlaceholder} = list_append(${valPlaceholder}, if_not_exists(${namePlaceholder}, ${emptyPlaceholder}))`)
+        } else {
+          setParts.push(`${namePlaceholder} = list_append(if_not_exists(${namePlaceholder}, ${emptyPlaceholder}), ${valPlaceholder})`)
+        }
+      }
+    }
+
+    // Build if_not_exists SET clause
+    if (updateOptions?.setIfNotExists) {
+      for (const [attr, value] of Object.entries(updateOptions.setIfNotExists)) {
+        const namePlaceholder = `#ine_${attr}`
+        const valPlaceholder = `:ine_${attr}`
+        expressionNames[namePlaceholder] = attr
+        expressionValues[valPlaceholder] = toDynamo(value)
+        setParts.push(`${namePlaceholder} = if_not_exists(${namePlaceholder}, ${valPlaceholder})`)
       }
     }
 

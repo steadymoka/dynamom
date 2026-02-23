@@ -563,6 +563,83 @@ describe('v0.4 Features', () => {
   })
 
 
+  describe('appendToList / setIfNotExists', () => {
+    it('appendToList appends items to an existing list', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+      const comment = await repository.create({
+        ...createFakeComment(),
+        history: ['a', 'b'],
+      })
+
+      await repository.appendToList(comment, 'history', ['c', 'd'])
+
+      const found = await repository.findOne({ hash: comment.pk, range: comment.type })
+      expect(found!.history).toEqual(['a', 'b', 'c', 'd'])
+    })
+
+    it('appendToList creates list when attribute does not exist', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+      const comment = await repository.create(createFakeComment())
+
+      await repository.appendToList(comment, 'history', ['first'])
+
+      const found = await repository.findOne({ hash: comment.pk, range: comment.type })
+      expect(found!.history).toEqual(['first'])
+    })
+
+    it('appendToList with prepend inserts at the beginning', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+      const comment = await repository.create({
+        ...createFakeComment(),
+        history: ['b', 'c'],
+      })
+
+      await repository.appendToList(comment, 'history', ['a'], true)
+
+      const found = await repository.findOne({ hash: comment.pk, range: comment.type })
+      expect(found!.history).toEqual(['a', 'b', 'c'])
+    })
+
+    it('setIfNotExists sets value only when attribute is missing', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+      const comment = await repository.create(createFakeComment())
+
+      await repository.setIfNotExists(comment, 'history', ['default'] as any)
+
+      const found = await repository.findOne({ hash: comment.pk, range: comment.type })
+      expect(found!.history).toEqual(['default'])
+    })
+
+    it('setIfNotExists does NOT overwrite existing value', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+      const comment = await repository.create({
+        ...createFakeComment(),
+        history: ['existing'],
+      })
+
+      await repository.setIfNotExists(comment, 'history', ['should-not-appear'] as any)
+
+      const found = await repository.findOne({ hash: comment.pk, range: comment.type })
+      expect(found!.history).toEqual(['existing'])
+    })
+
+    it('setIfNotExists works with non-array types', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+      const comment = await repository.create(createFakeComment())
+
+      await repository.setIfNotExists(comment, 'content', 'fallback')
+
+      const found = await repository.findOne({ hash: comment.pk, range: comment.type })
+      expect(found!.content).toBe(comment.content)
+    })
+  })
+
   describe('Conditional Expression', () => {
     it('conditional create fails when item already exists (hash-only table)', async () => {
       const connection = await getSafeConnection('movies')
