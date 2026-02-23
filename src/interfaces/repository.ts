@@ -45,6 +45,7 @@ export interface RepositoryOptions<Entity> {
 export interface CountOptions {
   indexName?: string
   hash: string | number
+  consistent?: boolean
 }
 
 export interface RetrieveOptions<P> {
@@ -56,6 +57,7 @@ export interface RetrieveOptions<P> {
   limit?: number
   after?: string
   desc?: boolean
+  consistent?: boolean
 }
 
 export interface RetrieveResult<P> {
@@ -68,6 +70,7 @@ export interface ScanRetrieveOptions<P> {
   select?: (keyof P)[]
   limit?: number
   after?: string
+  consistent?: boolean
 }
 
 export interface CreateOptions {

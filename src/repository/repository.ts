@@ -100,6 +100,16 @@ export class Repository<Entity extends object> {
       }
     }
 
+    for (const column of this.options.columns) {
+      if (column.onCreate) {
+        const value = await column.onCreate(entity)
+        if (value !== undefined) {
+          node[column.name] = value
+          ;(entity as any)[column.property] = value
+        }
+      }
+    }
+
     const hashKey = node[this.options.hashKey.sourceKey]
     if (!hashKey) {
       throw new Error('hashKey not defined!')
@@ -149,6 +159,16 @@ export class Repository<Entity extends object> {
       }
     }
 
+    for (const column of this.options.columns) {
+      if (column.onCreate) {
+        const value = await column.onCreate(entity)
+        if (value !== undefined) {
+          node[column.name] = value
+          ;(entity as any)[column.property] = value
+        }
+      }
+    }
+
     const hashKey = node[this.options.hashKey.sourceKey]
     if (!hashKey) {
       throw new Error('hashKey not defined!')
@@ -164,40 +184,40 @@ export class Repository<Entity extends object> {
     return this.toEntity(node)
   }
 
-  public async findOne({ indexName, hash, range }: { indexName?: string, hash: string | number, range?: string | number }): Promise<Entity | undefined> {
+  public async findOne({ indexName, hash, range, consistent }: { indexName?: string, hash: string | number, range?: string | number, consistent?: boolean }): Promise<Entity | undefined> {
     if (!indexName) {
       if (this.options.rangeKey && !range) {
-        return (await this.retrieve({ hash, limit: 1 })).nodes[0]
+        return (await this.retrieve({ hash, limit: 1, consistent })).nodes[0]
       }
       const cursor = {
         hash,
         range,
       }
-      const node = await this.connection.getItem(this.options, cursor)
+      const node = await this.connection.getItem(this.options, cursor, consistent)
       if (node) {
         return this.toEntity(node)
       }
       return undefined
     }
-    return (await this.retrieve({ indexName, hash, rangeOption: range ? new DefaultRange(range) : undefined, limit: 1 })).nodes[0]
+    return (await this.retrieve({ indexName, hash, rangeOption: range ? new DefaultRange(range) : undefined, limit: 1, consistent })).nodes[0]
   }
 
-  public async findOnes(cursors: DynamoCursor[]): Promise<Entity[] | undefined> {
-    const nodes = await this.connection.getManyItems(this.options, cursors)
+  public async findOnes(cursors: DynamoCursor[], { consistent }: { consistent?: boolean } = {}): Promise<Entity[] | undefined> {
+    const nodes = await this.connection.getManyItems(this.options, cursors, consistent)
     if (nodes) {
       return this.toEntity(nodes)
     }
     return undefined
   }
 
-  public async count({ indexName, hash }: CountOptions): Promise<number> {
+  public async count({ indexName, hash, consistent }: CountOptions): Promise<number> {
     if (!hash) {
       return Promise.resolve(0)
     }
-    return await this.connection.count(this.options, indexName, hash)
+    return await this.connection.count(this.options, indexName, hash, consistent)
   }
 
-  public async retrieve({ indexName, hash, rangeOption, filter, select, limit = 20, after, desc = false }: RetrieveOptions<Entity> = { hash: 'all' }): Promise<RetrieveResult<Entity>> {
+  public async retrieve({ indexName, hash, rangeOption, filter, select, limit = 20, after, desc = false, consistent }: RetrieveOptions<Entity> = { hash: 'all' }): Promise<RetrieveResult<Entity>> {
     const nodes: Entity[] = []
 
     const projection = select ? this.propertiesToColumns(select) : undefined
@@ -211,6 +231,7 @@ export class Repository<Entity extends object> {
       limit,
       after: after ? decodeBase64(after) : undefined,
       desc,
+      consistent,
     })
     const endCursor = result.endCursor
 
@@ -229,7 +250,7 @@ export class Repository<Entity extends object> {
     }
   }
 
-  public async scan({ filter, select, limit, after }: ScanRetrieveOptions<Entity> = {}): Promise<RetrieveResult<Entity>> {
+  public async scan({ filter, select, limit, after, consistent }: ScanRetrieveOptions<Entity> = {}): Promise<RetrieveResult<Entity>> {
     const projection = select ? this.propertiesToColumns(select) : undefined
 
     const result = await this.connection.scan(this.options, {
@@ -237,6 +258,7 @@ export class Repository<Entity extends object> {
       projection,
       limit,
       after: after ? decodeBase64(after) : undefined,
+      consistent,
     })
 
     const nodes: Entity[] = result.nodes.map(node => this.toEntity(node))
@@ -251,6 +273,15 @@ export class Repository<Entity extends object> {
   }
 
   public async persist(entity: Entity, persistOptions?: PersistOptions): Promise<void> {
+    for (const column of this.options.columns) {
+      if (column.onUpdate) {
+        const value = await column.onUpdate(entity)
+        if (value !== undefined) {
+          ;(entity as any)[column.property] = value
+        }
+      }
+    }
+
     const hash = (entity as any)[this.options.hashKey.property]
     if (!hash) {
       throw new Error('hashKey not defined!')

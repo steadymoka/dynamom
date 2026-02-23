@@ -12,6 +12,7 @@ export interface QueryOptions<P> {
   limit?: number
   after?: Record<string, AttributeValue>
   desc?: boolean
+  consistent?: boolean
 }
 
 export interface QueryResult<P> {
@@ -24,6 +25,7 @@ export interface ScanOptions<P> {
   projection?: string[]
   limit?: number
   after?: Record<string, AttributeValue>
+  consistent?: boolean
 }
 
 export interface ScanResult<P> {

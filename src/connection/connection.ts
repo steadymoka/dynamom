@@ -254,7 +254,7 @@ export class Connection {
     return true
   }
 
-  public async getItem<P = any>(options: RepositoryOptions<P>, cursor: DynamoCursor): Promise<any | null> {
+  public async getItem<P = any>(options: RepositoryOptions<P>, cursor: DynamoCursor, consistent?: boolean): Promise<any | null> {
     const data = await this.client.send(new GetItemCommand({
       TableName: `${options.tableName}`,
       Key: options.rangeKey
@@ -265,6 +265,7 @@ export class Connection {
         : {
           [options.hashKey.sourceKey]: toDynamo(cursor.hash),
         },
+      ConsistentRead: consistent || undefined,
     }))
     if (data && data.Item) {
       return fromDynamoMap(data.Item)
@@ -272,7 +273,7 @@ export class Connection {
     return null
   }
 
-  public async getManyItems<P = any>(options: RepositoryOptions<P>, cursors: DynamoCursor[]): Promise<any[]> {
+  public async getManyItems<P = any>(options: RepositoryOptions<P>, cursors: DynamoCursor[], consistent?: boolean): Promise<any[]> {
     if (cursors.length === 0) {
       return []
     }
@@ -288,6 +289,7 @@ export class Connection {
             : {
               [options.hashKey.sourceKey]: toDynamo(cursor.hash),
             }),
+          ConsistentRead: consistent || undefined,
         },
       },
     }))
@@ -298,7 +300,7 @@ export class Connection {
     return []
   }
 
-  public async query<P = any>(options: RepositoryOptions<P>, { indexName, hash, rangeOption, filter, projection, limit = 20, after, desc = false }: QueryOptions<P> = { hash: 'all' }): Promise<QueryResult<P>> {
+  public async query<P = any>(options: RepositoryOptions<P>, { indexName, hash, rangeOption, filter, projection, limit = 20, after, desc = false, consistent }: QueryOptions<P> = { hash: 'all' }): Promise<QueryResult<P>> {
     const hashKey = indexName
       ? (() => {
         const indexHash = options.indexes.find(({ name }) => name == indexName)!.hashKey
@@ -382,6 +384,7 @@ export class Connection {
       ProjectionExpression: projectionExpression,
       ExclusiveStartKey: after ? after : undefined,
       ScanIndexForward: !desc,
+      ConsistentRead: consistent || undefined,
     }))
 
     const nodes: P[] = (result.Items || []).map((item) => {
@@ -398,7 +401,7 @@ export class Connection {
     }
   }
 
-  public async scan<P = any>(options: RepositoryOptions<P>, { filter, projection, limit, after }: ScanOptions<P> = {}): Promise<ScanResult<P>> {
+  public async scan<P = any>(options: RepositoryOptions<P>, { filter, projection, limit, after, consistent }: ScanOptions<P> = {}): Promise<ScanResult<P>> {
     const params: any = {
       TableName: options.tableName,
     }
@@ -408,6 +411,9 @@ export class Connection {
     }
     if (after) {
       params.ExclusiveStartKey = after
+    }
+    if (consistent) {
+      params.ConsistentRead = true
     }
 
     const expressionNames: Record<string, string> = {}
@@ -446,7 +452,7 @@ export class Connection {
     return { nodes }
   }
 
-  public async count<P = any>(options: RepositoryOptions<P>, indexName?: string, hash: string | number = ''): Promise<number> {
+  public async count<P = any>(options: RepositoryOptions<P>, indexName?: string, hash: string | number = '', consistent?: boolean): Promise<number> {
     const hashKey = indexName
       ? (() => {
         const indexHash = options.indexes.find(({ name }) => name == indexName)!.hashKey
@@ -468,6 +474,7 @@ export class Connection {
       ExpressionAttributeValues: {
         ':hashkey': toDynamo(hash),
       },
+      ConsistentRead: consistent || undefined,
     }))
     return result.Count || 0
   }
