@@ -16,7 +16,7 @@ import type { AttributeValue, WriteRequest, TransactWriteItem, TransactGetItem }
 import { ExpressionBuilder } from '../expression/expression-builder'
 import { FilterCondition } from '../expression/filter'
 import { ConstructType } from '../interfaces/common'
-import { DynamoCursor, DynamoNode, QueryOptions, QueryResult, ScanOptions, ScanResult, UpdateItemOptions } from '../interfaces/connection'
+import { BatchGetRequest, DynamoCursor, DynamoNode, QueryOptions, QueryResult, ScanOptions, ScanResult, UpdateItemOptions } from '../interfaces/connection'
 import { RepositoryOptions } from '../interfaces/repository'
 import { createOptions } from '../repository/create-options'
 import { Repository } from '../repository/repository'
@@ -278,26 +278,45 @@ export class Connection {
       return []
     }
 
-    const result = await this.client.send(new BatchGetItemCommand({
-      RequestItems: {
-        [`${options.tableName}`]: {
-          Keys: cursors.map((cursor) => options.rangeKey
-            ? {
-              [options.hashKey.sourceKey]: toDynamo(cursor.hash),
-              [options.rangeKey.sourceKey]: toDynamo(cursor.range),
-            }
-            : {
-              [options.hashKey.sourceKey]: toDynamo(cursor.hash),
-            }),
-          ConsistentRead: consistent || undefined,
-        },
-      },
-    }))
+    const BATCH_SIZE = 100
+    const allResults: any[] = []
 
-    if (result && result.Responses && result.Responses[`${options.tableName}`]) {
-      return result.Responses[`${options.tableName}`].map(fromDynamoMap)
+    for (let i = 0; i < cursors.length; i += BATCH_SIZE) {
+      const chunk = cursors.slice(i, i + BATCH_SIZE)
+
+      let keysToProcess = chunk.map((cursor) => options.rangeKey
+        ? {
+          [options.hashKey.sourceKey]: toDynamo(cursor.hash),
+          [options.rangeKey.sourceKey]: toDynamo(cursor.range),
+        }
+        : {
+          [options.hashKey.sourceKey]: toDynamo(cursor.hash),
+        })
+
+      while (keysToProcess.length > 0) {
+        const result = await this.client.send(new BatchGetItemCommand({
+          RequestItems: {
+            [options.tableName]: {
+              Keys: keysToProcess,
+              ConsistentRead: consistent || undefined,
+            },
+          },
+        }))
+
+        if (result.Responses?.[options.tableName]) {
+          allResults.push(...result.Responses[options.tableName].map(fromDynamoMap))
+        }
+
+        const unprocessed = result.UnprocessedKeys?.[options.tableName]?.Keys
+        if (unprocessed && unprocessed.length > 0) {
+          keysToProcess = unprocessed
+        } else {
+          break
+        }
+      }
     }
-    return []
+
+    return allResults
   }
 
   public async query<P = any>(options: RepositoryOptions<P>, { indexName, hash, rangeOption, filter, projection, limit = 20, after, desc = false, consistent }: QueryOptions<P> = { hash: 'all' }): Promise<QueryResult<P>> {
@@ -565,6 +584,30 @@ export class Connection {
       TransactItems: items,
     }))
     return (result.Responses || []).map(r => r.Item ? fromDynamoMap(r.Item) : null).filter(Boolean) as Record<string, any>[]
+  }
+
+  public async batchGet<T extends Record<string, BatchGetRequest<any>>>(
+    requests: T,
+  ): Promise<{ [K in keyof T]: T[K] extends BatchGetRequest<infer E> ? E[] : never }> {
+    const entries = Object.entries(requests)
+
+    const results = await Promise.all(
+      entries.map(async ([label, request]) => {
+        if (request.keys.length === 0) {
+          return { label, items: [] }
+        }
+        const repo = this.getRepository(request.entity)
+        const items = await this.getManyItems(repo.options, request.keys, request.consistent)
+        return { label, items: repo.toEntity(items) }
+      }),
+    )
+
+    const output: Record<string, any[]> = {}
+    for (const { label, items } of results) {
+      output[label] = items
+    }
+
+    return output as any
   }
 
 }

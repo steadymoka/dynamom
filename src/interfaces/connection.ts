@@ -1,6 +1,7 @@
 import type { AttributeValue } from '@aws-sdk/client-dynamodb'
 
 import { FilterCondition } from '../expression/filter'
+import { ConstructType } from './common'
 import { RangeOption } from './range'
 
 export interface QueryOptions<P> {
@@ -50,4 +51,10 @@ export interface DynamoNode<P> {
 export interface DynamoCursor {
   hash: string | number
   range?: string | number
+}
+
+export interface BatchGetRequest<E extends object> {
+  entity: ConstructType<E>
+  keys: DynamoCursor[]
+  consistent?: boolean
 }

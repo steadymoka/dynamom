@@ -28,6 +28,34 @@ export async function getSafeConnection(tableName: string) {
   return new Connection(ddb)
 }
 
+export async function getMultiTableConnection(...tableNames: string[]) {
+  const ddb: DynamoDBClient = await global.createDynamoClient()
+  const { TableNames } = await ddb.send(new ListTablesCommand({}))
+  const existingTables = TableNames ?? []
+
+  for (const tableName of tableNames) {
+    if (existingTables.includes(tableName)) {
+      try {
+        await ddb.send(new DeleteTableCommand({ TableName: tableName }))
+      } catch {
+        // table may have been deleted by another parallel test
+      }
+    }
+    try {
+      if (tableName == 'users') { await createUserTable(ddb) }
+      if (tableName == 'categories') { await createCategoryTable(ddb) }
+      if (tableName == 'comments') { await createCommentTable(ddb) }
+      if (tableName == 'posts') { await createPostTable(ddb) }
+      if (tableName == 'movies') { await createMovieTable(ddb) }
+    } catch (e) {
+      console.error(e)
+      throw e
+    }
+  }
+
+  return new Connection(ddb)
+}
+
 export function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
