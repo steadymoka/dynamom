@@ -1,5 +1,6 @@
+import { FilterCondition } from '../expression/filter'
 import { MetadataColumn } from './metadata'
-import { RagneOption } from './range'
+import { RangeOption } from './range'
 
 export interface RepositoryOptions<Entity> {
   target: any
@@ -49,7 +50,9 @@ export interface CountOptions {
 export interface RetrieveOptions<P> {
   indexName?: string
   hash: string | number
-  rangeOption?: RagneOption
+  rangeOption?: RangeOption
+  filter?: FilterCondition
+  select?: (keyof P)[]
   limit?: number
   after?: string
   desc?: boolean
@@ -58,4 +61,24 @@ export interface RetrieveOptions<P> {
 export interface RetrieveResult<P> {
   nodes: P[]
   endCursor?: string
+}
+
+export interface ScanRetrieveOptions<P> {
+  filter?: FilterCondition
+  select?: (keyof P)[]
+  limit?: number
+  after?: string
+}
+
+export interface CreateOptions {
+  condition?: FilterCondition
+}
+
+export interface RemoveOptions {
+  condition?: FilterCondition
+}
+
+export interface PersistOptions {
+  remove?: string[]
+  condition?: FilterCondition
 }

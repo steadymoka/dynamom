@@ -8,8 +8,25 @@ export * from './interfaces/common'
 export {
   DefaultRange,
   BiggerThanRange,
-  SmallerThanRange
+  SmallerThanRange,
+  GteRange,
+  LteRange,
+  BeginsWithRange,
+  BetweenRange,
 } from './interfaces/range'
+export type { RangeOption, RagneOption } from './interfaces/range'
+
+export { ExpressionBuilder } from './expression/expression-builder'
+export {
+  F,
+  Eq, Ne, Lt, Lte, Gt, Gte,
+  Between, BeginsWith, Contains,
+  AttributeExists, AttributeNotExists,
+  And, Or, Not,
+} from './expression/filter'
+export type { FilterCondition } from './expression/filter'
+
+export { TransactWriter, TransactReader } from './connection/transaction'
 
 export { Connection } from './connection/connection'
 export { createConnection } from './connection/create-connection'

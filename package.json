@@ -22,7 +22,7 @@
     "build": "rimraf ./lib && tsc -p tsconfig.build.json",
     "test": "npm run build && npm run test:lint && npm run test:unit",
     "test:lint": "eslint src/**/*",
-    "test:unit": "jest test"
+    "test:unit": "jest test --runInBand"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.0.0",
