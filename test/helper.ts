@@ -1,3 +1,4 @@
+import type { AttributeValue } from '@aws-sdk/client-dynamodb'
 import {
   DynamoDBClient,
   ListTablesCommand,
@@ -29,6 +30,19 @@ export async function getSafeConnection(tableName: string) {
 
 export function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export async function createSequential<T>(count: number, factory: () => Promise<T>): Promise<T[]> {
+  const results: T[] = []
+  for (let i = 0; i < count; i++) {
+    await delay(10)
+    results.push(await factory())
+  }
+  return results
+}
+
+export function encodeBase64(cursor: Record<string, AttributeValue>): string {
+  return Buffer.from(JSON.stringify(cursor)).toString('base64')
 }
 
 async function createUserTable(ddb: DynamoDBClient) {

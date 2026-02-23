@@ -144,6 +144,13 @@ describe('createOptions', () => {
           onUpdate: undefined,
           target: Post,
         },
+        {
+          property: 'metadata',
+          name: 'metadata',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: Post,
+        },
       ],
       generatedValues: [
         {
