@@ -1,11 +1,11 @@
 import type { AttributeValue } from '@aws-sdk/client-dynamodb'
 import { GetItemCommand } from '@aws-sdk/client-dynamodb'
 
-import { BiggerThanRange, DefaultRange } from '../../lib'
+import { BiggerThanRange, DefaultRange, SmallerThanRange } from '../../lib'
 import { fromDynamoMap } from '../../lib/connection/transformer'
 import { createOptions } from '../../lib/repository/create-options'
 import { Repository } from '../../lib/repository/repository'
-import { getSafeConnection } from '../helper'
+import { getSafeConnection, delay } from '../helper'
 import { Category } from '../stubs/category'
 import { Comment } from '../stubs/comment'
 import {
@@ -20,414 +20,622 @@ import { Post } from '../stubs/post'
 import { User } from '../stubs/user'
 
 
-const range = (start: number, end: number) => Array.from({ length: end - start }, (_, k) => k + start)
-const delay = (time: any) => new Promise(res => setTimeout(res, time))
-
 function encodeBase64(cursor: Record<string, AttributeValue>): string {
   return Buffer.from(JSON.stringify(cursor)).toString('base64')
 }
 
-describe('testsuite of repository/repository', () => {
-  it('test create', async () => {
-    const connection = await getSafeConnection('users')
-    const client = connection.client
-    const repository = connection.getRepository(User)
-    const fakeUser = createFakeUser()
+async function createSequential<T>(count: number, factory: () => Promise<T>): Promise<T[]> {
+  const results: T[] = []
+  for (let i = 0; i < count; i++) {
+    await delay(10)
+    results.push(await factory())
+  }
+  return results
+}
 
-    const user = await repository.create(fakeUser)
 
-    expect(user).toEqual({
-      id: user.id,
-      username: fakeUser.username,
-      email: fakeUser.email,
-      type: fakeUser.type,
-      createdAt: fakeUser.createdAt,
+describe('Repository', () => {
+
+  describe('toEntity / toPlain', () => {
+    let repository: Repository<User>
+
+    beforeAll(() => {
+      const options = createOptions(User)
+      repository = new Repository<User>(null as any, options)
     })
-    expect(user).toBeInstanceOf(User)
 
-    const result = await client.send(new GetItemCommand({
-      TableName: 'users',
-      Key: {
-        user_id: { S: user.id },
-        username: { S: user.username },
-      },
-    }))
+    it('toEntity: converts a DynamoDB row to Entity with correct property mapping', () => {
+      const row = { user_id: 'abc', username: 'bob', email: 'b@b.com', type_tt: 'admin', created_at: 100 }
+      const entity = repository.toEntity(row)
 
-    expect({
-      user_id: user.id,
-      username: fakeUser.username,
-      email: fakeUser.email,
-      type_tt: fakeUser.type,
-      created_at: fakeUser.createdAt,
-    }).toEqual(fromDynamoMap(result.Item!))
-  })
-
-
-  it('test create only hashKey', async () => {
-    const connection = await getSafeConnection('movies')
-    const client = connection.client
-    const repository = new Repository<Movie>(connection, createOptions(Movie))
-    const fakeMovie = createFakeMovie()
-
-    const movie = await repository.create(fakeMovie)
-
-    expect(movie).toEqual({
-      id: movie.id,
-      userId: fakeMovie.userId,
-      title: fakeMovie.title,
-      description: fakeMovie.description,
-      createdAt: fakeMovie.createdAt,
-      indexKey: fakeMovie.indexKey,
+      expect(entity.id).toBe('abc')
+      expect(entity.username).toBe('bob')
+      expect(entity.email).toBe('b@b.com')
+      expect(entity.type).toBe('admin')
+      expect(entity.createdAt).toBe(100)
+      expect(entity).toBeInstanceOf(User)
     })
-    expect(movie).toBeInstanceOf(Movie)
 
-    const result = await client.send(new GetItemCommand({
-      TableName: 'movies',
-      Key: {
-        id: { S: movie.id },
-      },
-    }))
+    it('toEntity: converts array of rows', () => {
+      const rows = [
+        { user_id: 'a', username: 'u1', email: 'e1', type_tt: 't1', created_at: 1 },
+        { user_id: 'b', username: 'u2', email: 'e2', type_tt: 't2', created_at: 2 },
+      ]
+      const entities = repository.toEntity(rows)
 
-    expect({
-      id: movie.id,
-      user_id: fakeMovie.userId,
-      title: fakeMovie.title,
-      description: fakeMovie.description,
-      created_at: fakeMovie.createdAt,
-      index_key: fakeMovie.indexKey,
-      user_id__title: (fromDynamoMap(result.Item!) as any)['user_id__title'],
-    }).toEqual(fromDynamoMap(result.Item!))
-  })
-
-
-  it('test find', async () => {
-    const connection = await getSafeConnection('users')
-    const repository = connection.getRepository(User)
-    const fakeUser = createFakeUser()
-
-    const user = await repository.create(fakeUser)
-    const foundUser01 = await repository.findOne({ hash: user.id, range: user.username })
-
-    expect(foundUser01).toEqual(user)
-    expect(foundUser01).toEqual({
-      id: user.id,
-      username: fakeUser.username,
-      email: fakeUser.email,
-      type: fakeUser.type,
-      createdAt: fakeUser.createdAt,
+      expect(entities).toHaveLength(2)
+      expect(entities[0]).toBeInstanceOf(User)
+      expect(entities[1]).toBeInstanceOf(User)
+      expect(entities[0].id).toBe('a')
+      expect(entities[1].id).toBe('b')
     })
-    expect(foundUser01).toBeInstanceOf(User)
+
+    it('toPlain: converts Entity to DynamoDB row with reverse mapping', () => {
+      const row = { user_id: 'abc', username: 'bob', email: 'b@b.com', type_tt: 'admin', created_at: 100 }
+      const entity = repository.toEntity(row)
+      const plain = repository.toPlain(entity)
+
+      expect(plain).toEqual(row)
+    })
+
+    it('toPlain: converts array of entities', () => {
+      const rows = [
+        { user_id: 'a', username: 'u1', email: 'e1', type_tt: 't1', created_at: 1 },
+        { user_id: 'b', username: 'u2', email: 'e2', type_tt: 't2', created_at: 2 },
+      ]
+      const entities = repository.toEntity(rows)
+      const plains = repository.toPlain(entities)
+
+      expect(plains).toEqual(rows)
+    })
+
+    it('toEntity: ignores undefined fields in row', () => {
+      const row = { user_id: 'abc', username: 'bob' }
+      const entity = repository.toEntity(row)
+
+      expect(entity.id).toBe('abc')
+      expect(entity.username).toBe('bob')
+      expect(entity.email).toBeUndefined()
+    })
+
+    it('roundtrip: toPlain(toEntity(row)) equals original row', () => {
+      const row = { user_id: 'x', username: 'y', email: 'e', type_tt: 't', created_at: 999 }
+      expect(repository.toPlain(repository.toEntity(row))).toEqual(row)
+    })
   })
 
 
-  it('test findByCursors', async () => {
-    const connection = await getSafeConnection('users')
-    const repository = connection.getRepository(User)
-    const users = await Promise.all(range(0, 10).map(async () => {
-      await delay(100)
-      return repository.create(createFakeUser())
-    }))
-    const foundUsers = await repository.findOnes(users.map(({ id, username }) => { return { hash: id, range: username } }))
+  describe('create', () => {
+    it('creates hash+range entity (User) with uuid auto-generation', async () => {
+      const connection = await getSafeConnection('users')
+      const client = connection.client
+      const repository = connection.getRepository(User)
+      const fakeUser = createFakeUser()
 
-    expect(
-      foundUsers!.sort((a: any, b: any) => a.createdAt < b.createdAt ? 1 : -1)
-    ).toEqual(
-      users.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
-    )
+      const user = await repository.create(fakeUser)
+
+      expect(user.id).toBeDefined()
+      expect(user.id).toMatch(/^[0-9a-f-]{36}$/) // uuid format
+      expect(user.username).toBe(fakeUser.username)
+      expect(user.email).toBe(fakeUser.email)
+      expect(user.type).toBe(fakeUser.type)
+      expect(user.createdAt).toBe(fakeUser.createdAt)
+      expect(user).toBeInstanceOf(User)
+
+      const result = await client.send(new GetItemCommand({
+        TableName: 'users',
+        Key: {
+          user_id: { S: user.id },
+          username: { S: user.username },
+        },
+      }))
+      const stored = fromDynamoMap(result.Item!)
+      expect(stored).toEqual({
+        user_id: user.id,
+        username: fakeUser.username,
+        email: fakeUser.email,
+        type_tt: fakeUser.type,
+        created_at: fakeUser.createdAt,
+      })
+    })
+
+    it('creates hash only entity (Movie) with kuuid auto-generation', async () => {
+      const connection = await getSafeConnection('movies')
+      const client = connection.client
+      const repository = connection.getRepository(Movie)
+      const fakeMovie = createFakeMovie()
+
+      const movie = await repository.create(fakeMovie)
+
+      expect(movie.id).toBeDefined()
+      expect(movie).toBeInstanceOf(Movie)
+      expect(movie.userId).toBe(fakeMovie.userId)
+      expect(movie.title).toBe(fakeMovie.title)
+
+      const result = await client.send(new GetItemCommand({
+        TableName: 'movies',
+        Key: { id: { S: movie.id } },
+      }))
+      const stored = fromDynamoMap(result.Item!)
+      expect(stored['id']).toBe(movie.id)
+      expect(stored['user_id']).toBe(fakeMovie.userId)
+      // composite index key: user_id__title should be generated
+      expect(stored['user_id__title']).toBeDefined()
+      expect((stored['user_id__title'] as string).startsWith(`${fakeMovie.userId}__${fakeMovie.title}__`)).toBe(true)
+    })
   })
 
 
-  it('test count', async () => {
-    const connection = await getSafeConnection('posts')
-    const repository = connection.getRepository(Post)
+  describe('findOne', () => {
+    it('finds by hash+range', async () => {
+      const connection = await getSafeConnection('users')
+      const repository = connection.getRepository(User)
+      const user = await repository.create(createFakeUser())
 
-    const posts = await Promise.all(range(0, 10).map(async (i) => {
-      await delay(100)
-      if (i == 2 || i == 3 || i == 5) {
-        return repository.create(createFakePost('moka'))
+      const found = await repository.findOne({ hash: user.id, range: user.username })
+
+      expect(found).toEqual(user)
+      expect(found).toBeInstanceOf(User)
+    })
+
+    it('finds by hash only', async () => {
+      const connection = await getSafeConnection('movies')
+      const repository = connection.getRepository(Movie)
+      const movie = await repository.create(createFakeMovie())
+
+      const found = await repository.findOne({ hash: movie.id })
+
+      expect(found).toBeDefined()
+      expect(found!.id).toBe(movie.id)
+      expect(found).toBeInstanceOf(Movie)
+    })
+
+    it('finds by index (indexName + hash)', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+      await repository.create(createFakePost('moka'))
+
+      const found = await repository.findOne({ indexName: 'index__user_id__id', hash: 'moka' })
+
+      expect(found).toBeDefined()
+      expect(found!.userId).toBe('moka')
+    })
+
+    it('finds by index + hash + range', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+      const post = await repository.create(createFakePost('moka'))
+
+      const found = await repository.findOne({ indexName: 'index__user_id__id', hash: 'moka', range: post.id })
+
+      expect(found).toEqual(post)
+    })
+
+    it('returns undefined for non-existent item', async () => {
+      const connection = await getSafeConnection('users')
+      const repository = connection.getRepository(User)
+
+      const found = await repository.findOne({ hash: 'nonexistent', range: 'nonexistent' })
+
+      expect(found).toBeUndefined()
+    })
+
+    it('falls back to retrieve when range is omitted on range-key entity', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+      await repository.create(createFakePost())
+
+      const found = await repository.findOne({ hash: 'all' })
+
+      expect(found).toBeDefined()
+      expect(found!.pk).toBe('all')
+    })
+  })
+
+
+  describe('findOnes', () => {
+    it('batch retrieves multiple items', async () => {
+      const connection = await getSafeConnection('users')
+      const repository = connection.getRepository(User)
+
+      const users = await createSequential(5, () => repository.create(createFakeUser()))
+      const cursors = users.map(({ id, username }) => ({ hash: id, range: username }))
+
+      const found = await repository.findOnes(cursors)
+
+      expect(found).toBeDefined()
+      expect(found!).toHaveLength(5)
+      for (const user of users) {
+        expect(found!.find(f => f.id === user.id)).toBeDefined()
+      }
+    })
+
+    it('returns empty array for empty cursors', async () => {
+      const connection = await getSafeConnection('users')
+      const repository = connection.getRepository(User)
+
+      const found = await repository.findOnes([])
+
+      expect(found).toEqual([])
+    })
+  })
+
+
+  describe('count', () => {
+    it('counts all items by hash', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      await createSequential(5, () => repository.create(createFakePost()))
+
+      expect(await repository.count({ hash: 'all' })).toBe(5)
+    })
+
+    it('counts items by index', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      for (let i = 0; i < 7; i++) {
+        await delay(10)
+        await repository.create(createFakePost(i < 3 ? 'moka' : undefined))
       }
 
-      return repository.create(createFakePost())
-
-    }))
-
-    expect(await repository.count({ hash: 'all' })).toEqual(10)
-    expect(await repository.count({ indexName: 'index__user_id__id', hash: 'moka' })).toEqual(3)
-  })
-
-
-  it('test find only hashKey', async () => {
-    const connection = await getSafeConnection('movies')
-    const repository = connection.getRepository(Movie)
-    const fakeMovie = createFakeMovie()
-
-    const movie = await repository.create(fakeMovie)
-    const foundMovie = await repository.findOne({ hash: movie.id })
-
-    expect({ user_id__title: (movie as any)['user_id__title'], ...foundMovie }).toEqual(movie)
-    expect(foundMovie).toEqual({
-      id: movie.id,
-      userId: fakeMovie.userId,
-      title: fakeMovie.title,
-      description: fakeMovie.description,
-      createdAt: fakeMovie.createdAt,
-      indexKey: 'all',
-    })
-    expect(foundMovie).toBeInstanceOf(Movie)
-  })
-
-
-  it('test retrieve hashKey is STRING type & sortKey is STRING type', async () => {
-    const connection = await getSafeConnection('posts')
-    const repository = connection.getRepository(Post)
-
-    const posts = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakePost()) }))
-    const sortedPosts = posts.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
-
-    const result1 = await repository.retrieve({ hash: 'all', limit: 5, desc: true })
-    const result2 = await repository.retrieve({ hash: 'all', after: result1.endCursor, desc: true })
-
-    expect(result1).toEqual({
-      nodes: sortedPosts.slice(0, 5),
-      endCursor: encodeBase64({ pk: { S: 'all' }, id: { S: sortedPosts[4].id } }),
+      expect(await repository.count({ indexName: 'index__user_id__id', hash: 'moka' })).toBe(3)
     })
 
-    expect(result2).toEqual({
-      nodes: sortedPosts.slice(5),
+    it('returns 0 when no match', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      expect(await repository.count({ hash: 'nonexistent-hash' })).toBe(0)
     })
   })
 
 
-  it('test retrieve hashKey is NUMBER type & sortKey is STRING type', async () => {
-    const connection = await getSafeConnection('categories')
-    const repository = connection.getRepository(Category)
+  describe('retrieve - pagination', () => {
+    describe('STRING hash + STRING range (Post)', () => {
+      it('paginates with limit and endCursor', async () => {
+        const connection = await getSafeConnection('posts')
+        const repository = connection.getRepository(Post)
 
-    const categories = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakeCategory()) }))
-    const sortedCategories = categories.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
+        const posts = await createSequential(10, () => repository.create(createFakePost()))
+        const sorted = [...posts].sort((a, b) => a.id > b.id ? -1 : a.id < b.id ? 1 : 0)
 
-    const result1 = await repository.retrieve({ hash: 1, limit: 5, desc: true })
-    const result2 = await repository.retrieve({ hash: 1, after: result1.endCursor, desc: true })
+        const page1 = await repository.retrieve({ hash: 'all', limit: 5, desc: true })
 
-    expect(result1).toEqual({
-      nodes: sortedCategories.slice(0, 5),
-      endCursor: encodeBase64({ hashKey: { N: '1' }, id: { S: `${sortedCategories[4].id}` } }),
+        expect(page1.nodes).toEqual(sorted.slice(0, 5))
+        expect(page1.endCursor).toBeDefined()
+        expect(page1.endCursor).toBe(
+          encodeBase64({ pk: { S: 'all' }, id: { S: sorted[4].id } })
+        )
+
+        const page2 = await repository.retrieve({ hash: 'all', after: page1.endCursor, desc: true })
+
+        expect(page2.nodes).toEqual(sorted.slice(5))
+        expect(page2.endCursor).toBeUndefined()
+      })
     })
 
-    expect(result2).toEqual({
-      nodes: sortedCategories.slice(5),
-    })
-  })
+    describe('NUMBER hash + STRING range (Category)', () => {
+      it('paginates with correct NUMBER cursor type', async () => {
+        const connection = await getSafeConnection('categories')
+        const repository = connection.getRepository(Category)
 
-  it('test retrieve hashKey is NUMBER type & sortKey is NUMBER type', async () => {
-    const connection = await getSafeConnection('comments')
-    const repository = connection.getRepository(Comment)
+        const categories = await createSequential(10, () => repository.create(createFakeCategory()))
+        const sorted = [...categories].sort((a, b) => a.id > b.id ? -1 : a.id < b.id ? 1 : 0)
 
-    const comments = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakeComment()) }))
-    const sortedComments = comments.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
+        const page1 = await repository.retrieve({ hash: 1, limit: 5, desc: true })
 
-    const result = await repository.retrieve({ hash: 1, rangeOption: new DefaultRange(comments[2].type) })
-    expect(result).toEqual({
-      nodes: [comments[2]],
-    })
+        expect(page1.nodes).toEqual(sorted.slice(0, 5))
+        expect(page1.endCursor).toBe(
+          encodeBase64({ hashKey: { N: '1' }, id: { S: `${sorted[4].id}` } })
+        )
 
-    const result1 = await repository.retrieve({ hash: 1, limit: 5, desc: true })
-    const result2 = await repository.retrieve({ hash: 1, after: result1.endCursor, desc: true })
+        const page2 = await repository.retrieve({ hash: 1, after: page1.endCursor, desc: true })
 
-    expect(result1).toEqual({
-      nodes: sortedComments.slice(0, 5),
-      endCursor: encodeBase64({ type: { N: `${sortedComments[4].type}` }, pk: { N: '1' } }),
+        expect(page2.nodes).toEqual(sorted.slice(5))
+        expect(page2.endCursor).toBeUndefined()
+      })
     })
 
-    expect(result2).toEqual({
-      nodes: sortedComments.slice(5),
-    })
-  })
+    describe('NUMBER hash + NUMBER range (Comment)', () => {
+      it('paginates with correct NUMBER cursor types', async () => {
+        const connection = await getSafeConnection('comments')
+        const repository = connection.getRepository(Comment)
 
-  it('test retrieve hashKey is NUMBER type & sortKey is NUMBER type & test condition', async () => {
-    const connection = await getSafeConnection('comments')
-    const repository = connection.getRepository(Comment)
+        const comments = await createSequential(10, () => repository.create(createFakeComment()))
+        const sorted = [...comments].sort((a, b) => b.type - a.type)
 
-    const comments = await Promise.all(range(0, 10).map(async () => { await delay(100); return repository.create(createFakeComment()) }))
-    const sortedComments = comments.sort((a, b) => a.createdAt > b.createdAt ? 1 : -1) // 오름차순
-    expect(comments.length).toEqual(10)
+        const page1 = await repository.retrieve({ hash: 1, limit: 5, desc: true })
 
-    const result1 = await repository.retrieve({
-      hash: 1,
-      rangeOption: new BiggerThanRange(sortedComments[6].type),
-      desc: false,
-    })
-    expect(result1.nodes.length).toEqual(3)
+        expect(page1.nodes).toEqual(sorted.slice(0, 5))
+        expect(page1.endCursor).toBe(
+          encodeBase64({ type: { N: `${sorted[4].type}` }, pk: { N: '1' } })
+        )
 
-    const result2 = await repository.retrieve({
-      hash: 1,
-      rangeOption: new BiggerThanRange(sortedComments[1].type),
-      limit: 2,
-      desc: false,
+        const page2 = await repository.retrieve({ hash: 1, after: page1.endCursor, desc: true })
+
+        expect(page2.nodes).toEqual(sorted.slice(5))
+        expect(page2.endCursor).toBeUndefined()
+      })
     })
-    expect(result2.nodes.length).toEqual(2)
-    expect(result2).toEqual({
-      nodes: sortedComments.slice(2, 4),
-      endCursor: encodeBase64({ type: { N: `${sortedComments[3].type}` }, pk: { N: `${sortedComments[3].pk}` } }),
-    })
-    const result3 = await repository.retrieve({
-      hash: 1,
-      rangeOption: new BiggerThanRange(sortedComments[1].type),
-      after: result2.endCursor,
-      limit: 2,
-      desc: false,
-    })
-    expect(result3.nodes.length).toEqual(2)
-    expect(result3).toEqual({
-      nodes: sortedComments.slice(4, 6),
-      endCursor: encodeBase64({ type: { N: `${sortedComments[5].type}` }, pk: { N: `${sortedComments[5].pk}` } }),
+
+    it('returns empty nodes for non-existent hash', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      const result = await repository.retrieve({ hash: 'nonexistent' })
+
+      expect(result.nodes).toEqual([])
     })
   })
 
-  it('test retrieve by INDEX', async () => {
-    const connection = await getSafeConnection('posts')
-    const repository = connection.getRepository(Post)
 
-    const posts = await Promise.all(range(0, 10).map(async (i) => {
-      await delay(100)
-      if (i == 2 || i == 3 || i == 5) {
-        return repository.create(createFakePost('moka'))
+  describe('retrieve - range conditions', () => {
+    it('DefaultRange - exact match', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+
+      const comments = await createSequential(5, () => repository.create(createFakeComment()))
+
+      const result = await repository.retrieve({
+        hash: 1,
+        rangeOption: new DefaultRange(comments[2].type),
+      })
+
+      expect(result.nodes).toEqual([comments[2]])
+    })
+
+    it('BiggerThanRange - items with range > value', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+
+      const comments = await createSequential(10, () => repository.create(createFakeComment()))
+      const ascending = [...comments].sort((a, b) => a.type - b.type)
+
+      const result = await repository.retrieve({
+        hash: 1,
+        rangeOption: new BiggerThanRange(ascending[6].type),
+        desc: false,
+      })
+
+      expect(result.nodes).toHaveLength(3)
+      expect(result.nodes).toEqual(ascending.slice(7))
+    })
+
+    it('SmallerThanRange - items with range < value', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+
+      const comments = await createSequential(10, () => repository.create(createFakeComment()))
+      const ascending = [...comments].sort((a, b) => a.type - b.type)
+
+      const result = await repository.retrieve({
+        hash: 1,
+        rangeOption: new SmallerThanRange(ascending[3].type),
+        desc: false,
+      })
+
+      expect(result.nodes).toHaveLength(3)
+      expect(result.nodes).toEqual(ascending.slice(0, 3))
+    })
+
+    it('BiggerThanRange + pagination', async () => {
+      const connection = await getSafeConnection('comments')
+      const repository = connection.getRepository(Comment)
+
+      const comments = await createSequential(10, () => repository.create(createFakeComment()))
+      const ascending = [...comments].sort((a, b) => a.type - b.type)
+
+      const page1 = await repository.retrieve({
+        hash: 1,
+        rangeOption: new BiggerThanRange(ascending[1].type),
+        limit: 2,
+        desc: false,
+      })
+
+      expect(page1.nodes).toHaveLength(2)
+      expect(page1.nodes).toEqual(ascending.slice(2, 4))
+      expect(page1.endCursor).toBeDefined()
+
+      const page2 = await repository.retrieve({
+        hash: 1,
+        rangeOption: new BiggerThanRange(ascending[1].type),
+        after: page1.endCursor,
+        limit: 2,
+        desc: false,
+      })
+
+      expect(page2.nodes).toHaveLength(2)
+      expect(page2.nodes).toEqual(ascending.slice(4, 6))
+    })
+  })
+
+
+  describe('retrieve - index', () => {
+    it('retrieves via GSI', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      for (let i = 0; i < 7; i++) {
+        await delay(10)
+        await repository.create(createFakePost(i < 3 ? 'moka' : undefined))
       }
 
-      return repository.create(createFakePost())
+      const result = await repository.retrieve({
+        indexName: 'index__user_id__id',
+        hash: 'moka',
+        limit: 10,
+        desc: true,
+      })
 
-    }))
-    const sortedPosts = posts.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
-
-    const result1 = await repository.retrieve({ indexName: 'index__user_id__id', hash: 'moka', limit: 5, desc: true })
-    expect(result1.nodes.length).toEqual(3)
-
-    expect(result1).toEqual({
-      nodes: [sortedPosts.filter((item) => item.userId == 'moka')[0],
-        sortedPosts.filter((item) => item.userId == 'moka')[1],
-        sortedPosts.filter((item) => item.userId == 'moka')[2]],
+      expect(result.nodes).toHaveLength(3)
+      for (const node of result.nodes) {
+        expect(node.userId).toBe('moka')
+      }
     })
 
-    const result2 = await repository.retrieve({ indexName: 'index__user_id__id', hash: 'moka', limit: 2, desc: true })
-    expect(result2.nodes.length).toEqual(2)
+    it('GSI with DefaultRange filter on composite index', async () => {
+      const connection = await getSafeConnection('movies')
+      const repository = connection.getRepository(Movie)
 
-    const result3 = await repository.retrieve({ indexName: 'index__user_id__id', hash: 'aaaaaaaa', limit: 2, desc: true })
-    expect(result3.nodes.length).toEqual(0)
-
-    const resultAfter = await repository.retrieve({ indexName: 'index__user_id__id', hash: 'moka', limit: 2, after: result2.endCursor, desc: true })
-
-    const result4 = await repository.findOne({ indexName: 'index__user_id__id', hash: 'moka' })
-  })
-
-
-  it('test retrieve by INDEX and FILTER', async () => {
-    const connection = await getSafeConnection('movies')
-    const repository = connection.getRepository(Movie)
-
-    const movies = await Promise.all(range(0, 10).map(async (i) => {
-      await delay(100)
-      if (i == 2 || i == 3 || i == 5 || i == 6 || i == 7) {
-        return repository.create(createFakeMovie('moka', 'title!!'))
+      for (let i = 0; i < 10; i++) {
+        await delay(10)
+        if (i < 5) {
+          await repository.create(createFakeMovie('moka', 'title!!'))
+        } else {
+          await repository.create(createFakeMovie())
+        }
       }
 
-      return repository.create(createFakeMovie())
+      const result = await repository.retrieve({
+        indexName: 'index__index_key__user_id__title',
+        hash: 'all',
+        rangeOption: new DefaultRange('moka__title!!'),
+        limit: 3,
+        desc: true,
+      })
 
-    }))
-    const sortedMovies = movies.sort((a, b) => a.createdAt < b.createdAt ? 1 : -1)
-    const filteredMovies = sortedMovies.filter(({ userId }) => userId == 'moka')
-
-    const result1 = await repository.retrieve({
-      indexName: 'index__index_key__user_id__title',
-      hash: 'all',
-      rangeOption: new DefaultRange('moka__title!!'),
-      limit: 3,
-      desc: true,
+      expect(result.nodes).toHaveLength(3)
+      for (const node of result.nodes) {
+        expect(node.userId).toBe('moka')
+        expect(node.title).toBe('title!!')
+      }
     })
 
-    expect(result1.nodes).toEqual(filteredMovies.slice(0, 3))
-  })
+    it('returns empty for non-matching GSI hash', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+      await repository.create(createFakePost())
 
+      const result = await repository.retrieve({
+        indexName: 'index__user_id__id',
+        hash: 'nonexistent-user',
+        desc: true,
+      })
 
-  it('test findOne with index, hash, range', async () => {
-    const connection = await getSafeConnection('posts')
-    const repository = connection.getRepository(Post)
+      expect(result.nodes).toHaveLength(0)
+    })
 
-    const posts = await Promise.all(range(0, 10).map(async (i) => {
-      await delay(100)
-      if (i == 2 || i == 3 || i == 5) {
-        return repository.create(createFakePost('moka'))
+    it('GSI pagination with endCursor', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      for (let i = 0; i < 5; i++) {
+        await delay(10)
+        await repository.create(createFakePost('moka'))
       }
-      if (i == 4) {
-        return repository.create(createFakePost('moka_a'))
-      }
 
-      return repository.create(createFakePost())
+      const page1 = await repository.retrieve({
+        indexName: 'index__user_id__id',
+        hash: 'moka',
+        limit: 2,
+        desc: true,
+      })
 
-    }))
+      expect(page1.nodes).toHaveLength(2)
+      expect(page1.endCursor).toBeDefined()
 
-    const savedPosts = posts.filter(({ userId }) => userId == 'moka')
-    expect(savedPosts.length).toEqual(3)
+      const page2 = await repository.retrieve({
+        indexName: 'index__user_id__id',
+        hash: 'moka',
+        limit: 2,
+        after: page1.endCursor,
+        desc: true,
+      })
 
-    range(0, 2).forEach(async (i) => {
-      const savedPost = savedPosts[i]
-      const findPost = await repository.findOne({ indexName: 'index__user_id__id', hash: savedPost.userId, range: savedPost.id })
-      expect(savedPost).toEqual(findPost)
+      expect(page2.nodes).toHaveLength(2)
+
+      const page3 = await repository.retrieve({
+        indexName: 'index__user_id__id',
+        hash: 'moka',
+        limit: 2,
+        after: page2.endCursor,
+        desc: true,
+      })
+
+      expect(page3.nodes).toHaveLength(1)
+      expect(page3.endCursor).toBeUndefined()
     })
   })
 
 
-  it('test persist(update) posts', async () => {
-    const connection = await getSafeConnection('posts')
-    const repository = connection.getRepository(Post)
+  describe('persist', () => {
+    it('updates attributes and verifies via findOne', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
 
-    const fakePost = createFakePost()
+      const post = await repository.create(createFakePost())
+      post.content = 'updated-content'
+      post.enable = false
 
-    const post = await repository.create(fakePost)
-    post.content = 'content+update@@moka'
-    post.enable = false
+      expect(await repository.persist(post)).toBeUndefined()
 
-    expect(await repository.persist(post)).toBeUndefined() // return void
+      const found = await repository.findOne({ hash: post.pk, range: post.id })
 
-    const foundPost = await repository.findOne({ hash: post.pk, range: post.id })
+      expect(found).toBeDefined()
+      expect(found!.content).toBe('updated-content')
+      expect(found!.enable).toBe(false)
+      expect(found!).toEqual(post)
+    })
 
-    if (foundPost) {
-      expect(foundPost.content).toEqual('content+update@@moka')
-      expect(foundPost.enable).toEqual(false)
-      expect(foundPost).toEqual(post)
-    }
+    it('updates multiple attributes simultaneously', async () => {
+      const connection = await getSafeConnection('users')
+      const repository = connection.getRepository(User)
+
+      const user = await repository.create(createFakeUser())
+      user.email = 'new@email.com'
+      user.type = 'admin'
+
+      await repository.persist(user)
+
+      const found = await repository.findOne({ hash: user.id, range: user.username })
+      expect(found!.email).toBe('new@email.com')
+      expect(found!.type).toBe('admin')
+    })
   })
 
 
-  it('test remove', async () => {
-    const connection = await getSafeConnection('users')
-    const client = connection.client
-    const repository = connection.getRepository(User)
-    const fakeUser = createFakeUser()
+  describe('remove', () => {
+    it('deletes item and verifies via findOne', async () => {
+      const connection = await getSafeConnection('users')
+      const repository = connection.getRepository(User)
 
-    const user = await repository.create(fakeUser)
+      const user = await repository.create(createFakeUser())
+      expect(await repository.findOne({ hash: user.id, range: user.username })).toEqual(user)
 
-    // exists!
-    expect(await repository.findOne({ hash: user.id, range: user.username })).toEqual(user)
-    const getResult1 = await client.send(new GetItemCommand({
-      TableName: 'users',
-      Key: {
-        user_id: { S: user.id },
-        username: { S: user.username },
-      },
-    }))
-    expect(getResult1.Item).not.toEqual(undefined)
+      expect(await repository.remove(user)).toBeUndefined()
 
-    expect(await repository.remove(user)).toBeUndefined() // return void
+      expect(await repository.findOne({ hash: user.id, range: user.username })).toBeUndefined()
+    })
 
-    // not exists!
-    expect(await repository.findOne({ hash: user.id, range: user.username })).toEqual(undefined)
-    const getResult2 = await client.send(new GetItemCommand({
-      TableName: 'users',
-      Key: {
-        user_id: { S: user.id },
-        username: { S: user.username },
-      },
-    }))
-    expect(getResult2.Item).toEqual(undefined)
+    it('deletes item and verifies via direct GetItemCommand', async () => {
+      const connection = await getSafeConnection('users')
+      const client = connection.client
+      const repository = connection.getRepository(User)
+
+      const user = await repository.create(createFakeUser())
+
+      const before = await client.send(new GetItemCommand({
+        TableName: 'users',
+        Key: {
+          user_id: { S: user.id },
+          username: { S: user.username },
+        },
+      }))
+      expect(before.Item).toBeDefined()
+
+      await repository.remove(user)
+
+      const after = await client.send(new GetItemCommand({
+        TableName: 'users',
+        Key: {
+          user_id: { S: user.id },
+          username: { S: user.username },
+        },
+      }))
+      expect(after.Item).toBeUndefined()
+    })
   })
 
 })

@@ -2,8 +2,8 @@ const { DynamoDBClient } = require('@aws-sdk/client-dynamodb')
 const { exec } = require('child_process')
 
 
+let cachedPort
 function getDockerComposePort(service, port) {
-  let cachedPort
   if (cachedPort) {
     return Promise.resolve(cachedPort)
   }

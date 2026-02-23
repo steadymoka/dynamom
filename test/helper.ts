@@ -21,9 +21,14 @@ export async function getSafeConnection(tableName: string) {
     if (tableName == 'movies') { await createMovieTable(ddb) }
   }
   catch(e) {
-    console.log(e)
+    console.error(e)
+    throw e
   }
   return new Connection(ddb)
+}
+
+export function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 async function createUserTable(ddb: DynamoDBClient) {
@@ -130,8 +135,4 @@ async function createMovieTable(ddb: DynamoDBClient) {
       },
     ],
   }))
-}
-
-export function timeout(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }
