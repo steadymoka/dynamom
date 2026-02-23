@@ -277,6 +277,75 @@ describe('v0.4 Features', () => {
   })
 
 
+  describe('Type-safe Filter (repo.filter)', () => {
+    it('repo.filter.eq applies property-to-column mapping', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      for (let i = 0; i < 5; i++) {
+        await delay(10)
+        await repository.create({ ...createFakePost('moka'), enable: i < 3 })
+      }
+
+      const result = await repository.retrieve({
+        hash: 'all',
+        filter: repository.filter.eq('enable', true),
+      })
+
+      expect(result.nodes).toHaveLength(3)
+      for (const node of result.nodes) {
+        expect(node.enable).toBe(true)
+      }
+    })
+
+    it('repo.filter.and combines typed conditions', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      await delay(10)
+      await repository.create({ ...createFakePost('moka'), content: 'hello', enable: true })
+      await delay(10)
+      await repository.create({ ...createFakePost('moka'), content: 'hello', enable: false })
+      await delay(10)
+      await repository.create({ ...createFakePost('moka'), content: 'world', enable: true })
+
+      const result = await repository.retrieve({
+        hash: 'all',
+        filter: repository.filter.and(
+          repository.filter.eq('content', 'hello'),
+          repository.filter.eq('enable', true),
+        ),
+      })
+
+      expect(result.nodes).toHaveLength(1)
+      expect(result.nodes[0].content).toBe('hello')
+      expect(result.nodes[0].enable).toBe(true)
+    })
+
+    it('repo.filter maps userId property to user_id column', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      await delay(10)
+      await repository.create(createFakePost('alice'))
+      await delay(10)
+      await repository.create(createFakePost('bob'))
+      await delay(10)
+      await repository.create(createFakePost('alice'))
+
+      const result = await repository.retrieve({
+        hash: 'all',
+        filter: repository.filter.eq('userId', 'alice'),
+      })
+
+      expect(result.nodes).toHaveLength(2)
+      for (const node of result.nodes) {
+        expect(node.userId).toBe('alice')
+      }
+    })
+  })
+
+
   describe('Scan', () => {
     it('scans all items in table', async () => {
       const connection = await getSafeConnection('users')

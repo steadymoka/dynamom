@@ -114,6 +114,55 @@ export class Not implements FilterCondition {
   }
 }
 
+// Type-safe filter factory (bound to entity type)
+
+export class FilterFactory<P> {
+  constructor(private propertyToColumn: (property: string) => string) {}
+
+  eq<K extends string & keyof P>(attr: K, value: P[K] & (string | number | boolean)): FilterCondition {
+    return new Eq(this.propertyToColumn(attr), value)
+  }
+  ne<K extends string & keyof P>(attr: K, value: P[K] & (string | number | boolean)): FilterCondition {
+    return new Ne(this.propertyToColumn(attr), value)
+  }
+  lt<K extends string & keyof P>(attr: K, value: P[K] & (string | number)): FilterCondition {
+    return new Lt(this.propertyToColumn(attr), value)
+  }
+  lte<K extends string & keyof P>(attr: K, value: P[K] & (string | number)): FilterCondition {
+    return new Lte(this.propertyToColumn(attr), value)
+  }
+  gt<K extends string & keyof P>(attr: K, value: P[K] & (string | number)): FilterCondition {
+    return new Gt(this.propertyToColumn(attr), value)
+  }
+  gte<K extends string & keyof P>(attr: K, value: P[K] & (string | number)): FilterCondition {
+    return new Gte(this.propertyToColumn(attr), value)
+  }
+  between<K extends string & keyof P>(attr: K, low: P[K] & (string | number), high: P[K] & (string | number)): FilterCondition {
+    return new Between(this.propertyToColumn(attr), low, high)
+  }
+  beginsWith<K extends string & keyof P>(attr: K, prefix: string): FilterCondition {
+    return new BeginsWith(this.propertyToColumn(attr), prefix)
+  }
+  contains<K extends string & keyof P>(attr: K, value: string | number): FilterCondition {
+    return new Contains(this.propertyToColumn(attr), value)
+  }
+  exists(attr: string & keyof P): FilterCondition {
+    return new AttributeExists(this.propertyToColumn(attr))
+  }
+  notExists(attr: string & keyof P): FilterCondition {
+    return new AttributeNotExists(this.propertyToColumn(attr))
+  }
+  and(...conditions: FilterCondition[]): FilterCondition {
+    return new And(...conditions)
+  }
+  or(...conditions: FilterCondition[]): FilterCondition {
+    return new Or(...conditions)
+  }
+  not(condition: FilterCondition): FilterCondition {
+    return new Not(condition)
+  }
+}
+
 // Convenience factory namespace
 
 export const F = {

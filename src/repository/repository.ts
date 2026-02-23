@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid'
 import { Connection } from '../connection/connection'
 import { toDynamo, toDynamoMap } from '../connection/transformer'
 import { ExpressionBuilder } from '../expression/expression-builder'
-import { FilterCondition } from '../expression/filter'
+import { FilterCondition, FilterFactory } from '../expression/filter'
 import { columnBy } from '../indexer/column-by'
 import { MaybeArray } from '../interfaces/common'
 import { DynamoCursor, UpdateItemOptions } from '../interfaces/connection'
@@ -31,10 +31,13 @@ function decodeBase64(buffer: string): Record<string, AttributeValue> {
 
 export class Repository<Entity extends object> {
 
+  public readonly filter: FilterFactory<Entity>
+
   constructor(
     public connection: Connection,
     public options: RepositoryOptions<Entity>,
   ) {
+    this.filter = new FilterFactory<Entity>((property) => this.propertyToColumn(property))
   }
 
   toEntity(rows: any[]): Entity[]

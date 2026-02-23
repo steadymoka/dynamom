@@ -19,6 +19,7 @@ export type { RangeOption, RagneOption } from './interfaces/range'
 export { ExpressionBuilder } from './expression/expression-builder'
 export {
   F,
+  FilterFactory,
   Eq, Ne, Lt, Lte, Gt, Gte,
   Between, BeginsWith, Contains,
   AttributeExists, AttributeNotExists,
