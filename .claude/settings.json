@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(npx eslint:*)",
+      "Bash(docker compose:*)",
+      "Bash(npx jest:*)",
+      "WebSearch",
+      "Bash(npm ls:*)",
+      "Bash(git:*)",
+      "Bash(npm test:*)",
+      "Bash(rm:*)"
+    ]
+  }
+}
