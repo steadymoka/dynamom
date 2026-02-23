@@ -123,9 +123,10 @@ export class Connection {
     const rangeKey = options.rangeKey ? options.rangeKey.sourceKey : undefined
     const removeSet = new Set(updateOptions?.remove ?? [])
     const addSet = new Set(Object.keys(updateOptions?.add ?? {}))
+    const deleteFromSetKeys = new Set(Object.keys(updateOptions?.deleteFromSet ?? {}))
     const keys = Object.keys(row.node as Record<string, any>)
       .filter((key) => key != hashKey && key != rangeKey)
-      .filter((key) => !removeSet.has(key) && !addSet.has(key))
+      .filter((key) => !removeSet.has(key) && !addSet.has(key) && !deleteFromSetKeys.has(key))
 
     const Key = rangeKey
       ? {
@@ -168,6 +169,18 @@ export class Connection {
       }
     }
 
+    // Build DELETE clause (remove elements from Set)
+    const deleteParts: string[] = []
+    if (updateOptions?.deleteFromSet) {
+      for (const [attr, values] of Object.entries(updateOptions.deleteFromSet)) {
+        const namePlaceholder = `#del_${attr}`
+        const valPlaceholder = `:del_${attr}`
+        expressionNames[namePlaceholder] = attr
+        expressionValues[valPlaceholder] = toDynamo(values)
+        deleteParts.push(`${namePlaceholder} ${valPlaceholder}`)
+      }
+    }
+
     // Combine UpdateExpression parts
     const parts: string[] = []
     if (setParts.length > 0) {
@@ -178,6 +191,9 @@ export class Connection {
     }
     if (addParts.length > 0) {
       parts.push(`ADD ${addParts.join(', ')}`)
+    }
+    if (deleteParts.length > 0) {
+      parts.push(`DELETE ${deleteParts.join(', ')}`)
     }
 
     if (parts.length === 0) {

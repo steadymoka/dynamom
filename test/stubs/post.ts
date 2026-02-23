@@ -25,4 +25,7 @@ export class Post {
   @Column({ name: 'created_at' })
   public createdAt!: number
 
+  @Column()
+  public tags!: Set<string>
+
 }

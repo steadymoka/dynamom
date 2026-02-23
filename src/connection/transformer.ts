@@ -21,6 +21,12 @@ export function toDynamo(item: any): AttributeValue {
     case 'boolean':
       return { BOOL: item }
   }
+  if (item instanceof Set) {
+    if (item.size === 0) return { NULL: true }
+    const arr = [...item]
+    if (typeof arr[0] === 'string') return { SS: arr as string[] }
+    if (typeof arr[0] === 'number') return { NS: (arr as number[]).map(String) }
+  }
   if (Array.isArray(item)) {
     return { L: item.map(toDynamo) }
   }
@@ -52,6 +58,12 @@ export function fromDynamo(item: AttributeValue): any {
   }
   if (item.L) {
     return item.L.map(fromDynamo)
+  }
+  if (item.SS) {
+    return new Set(item.SS)
+  }
+  if (item.NS) {
+    return new Set(item.NS.map(Number))
   }
   if (item.M) {
     return fromDynamoMap(item.M)

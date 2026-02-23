@@ -298,6 +298,52 @@ export class Repository<Entity extends object> {
     })
   }
 
+  public async addToSet<K extends string & keyof Entity>(
+    entity: Entity,
+    property: K,
+    values: Entity[K] extends Set<infer T> ? Set<T> : never,
+  ): Promise<void> {
+    const hash = (entity as any)[this.options.hashKey.property]
+    if (!hash) {
+      throw new Error('hashKey not defined!')
+    }
+    const range = this.options.rangeKey
+      ? (entity as any)[this.options.rangeKey.property]
+      : undefined
+
+    const columnName = this.propertyToColumn(property)
+
+    await this.connection.updateItem(this.options, {
+      cursor: range ? { hash, range } : { hash },
+      node: {} as any,
+    }, {
+      add: { [columnName]: values } as Record<string, Set<string> | Set<number>>,
+    })
+  }
+
+  public async deleteFromSet<K extends string & keyof Entity>(
+    entity: Entity,
+    property: K,
+    values: Entity[K] extends Set<infer T> ? Set<T> : never,
+  ): Promise<void> {
+    const hash = (entity as any)[this.options.hashKey.property]
+    if (!hash) {
+      throw new Error('hashKey not defined!')
+    }
+    const range = this.options.rangeKey
+      ? (entity as any)[this.options.rangeKey.property]
+      : undefined
+
+    const columnName = this.propertyToColumn(property)
+
+    await this.connection.updateItem(this.options, {
+      cursor: range ? { hash, range } : { hash },
+      node: {} as any,
+    }, {
+      deleteFromSet: { [columnName]: values } as Record<string, Set<string> | Set<number>>,
+    })
+  }
+
   public async removeAttributes(entity: Entity, properties: (keyof Entity)[]): Promise<void> {
     const hash = (entity as any)[this.options.hashKey.property]
     if (!hash) {
@@ -466,10 +512,22 @@ export class Repository<Entity extends object> {
       }
     }
 
+    const deleteParts: string[] = []
+    if (updateOpts?.deleteFromSet) {
+      for (const [attr, values] of Object.entries(updateOpts.deleteFromSet)) {
+        const namePlaceholder = `#del_${attr}`
+        const valPlaceholder = `:del_${attr}`
+        expressionNames[namePlaceholder] = attr
+        expressionValues[valPlaceholder] = toDynamo(values)
+        deleteParts.push(`${namePlaceholder} ${valPlaceholder}`)
+      }
+    }
+
     const parts: string[] = []
     if (setParts.length > 0) parts.push(`SET ${setParts.join(', ')}`)
     if (removeParts.length > 0) parts.push(`REMOVE ${removeParts.join(', ')}`)
     if (addParts.length > 0) parts.push(`ADD ${addParts.join(', ')}`)
+    if (deleteParts.length > 0) parts.push(`DELETE ${deleteParts.join(', ')}`)
 
     const update: any = {
       TableName: this.options.tableName,
@@ -529,6 +587,13 @@ export class Repository<Entity extends object> {
     }
 
     return { ConditionCheck: check }
+  }
+
+  // Type-safe index name builder
+
+  public indexName(first: string & keyof Entity, ...rest: (string & keyof Entity)[]): string {
+    const sourceKeys = [first, ...rest].map(p => this.propertyToColumn(p))
+    return `index__${sourceKeys.join('__')}`
   }
 
   // Private helpers

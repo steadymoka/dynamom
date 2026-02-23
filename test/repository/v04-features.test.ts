@@ -346,6 +346,48 @@ describe('v0.4 Features', () => {
   })
 
 
+  describe('Type-safe Index Name (repo.indexName)', () => {
+    it('generates correct index name from property names', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      // Post has @Index<Post>({ hash: ['userId'], range: ['id'] })
+      // userId → user_id, id → id
+      expect(repository.indexName('userId', 'id')).toBe('index__user_id__id')
+    })
+
+    it('generates hash-only index name', async () => {
+      const connection = await getSafeConnection('users')
+      const repository = connection.getRepository(User)
+
+      // User has @Index<User>({ hash: ['email'], range: [] })
+      expect(repository.indexName('email')).toBe('index__email')
+    })
+
+    it('works with retrieve for actual query', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      await delay(10)
+      await repository.create(createFakePost('moka'))
+      await delay(10)
+      await repository.create(createFakePost('moka'))
+      await delay(10)
+      await repository.create(createFakePost('other'))
+
+      const result = await repository.retrieve({
+        indexName: repository.indexName('userId', 'id'),
+        hash: 'moka',
+      })
+
+      expect(result.nodes).toHaveLength(2)
+      for (const node of result.nodes) {
+        expect(node.userId).toBe('moka')
+      }
+    })
+  })
+
+
   describe('Scan', () => {
     it('scans all items in table', async () => {
       const connection = await getSafeConnection('users')
@@ -454,6 +496,69 @@ describe('v0.4 Features', () => {
       const found = await repository.findOne({ hash: post.pk, range: post.id })
       expect(found!.enable).toBe(false)
       expect(found!.content).toBeUndefined()
+    })
+  })
+
+
+  describe('Set Type (SS/NS)', () => {
+    it('creates and retrieves entity with Set<string> (SS)', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      const post = await repository.create({
+        ...createFakePost(),
+        tags: new Set(['typescript', 'dynamodb']),
+      })
+
+      const found = await repository.findOne({ hash: post.pk, range: post.id })
+      expect(found!.tags).toBeInstanceOf(Set)
+      expect(found!.tags).toEqual(new Set(['typescript', 'dynamodb']))
+    })
+
+    it('addToSet atomically adds elements to a Set', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      const post = await repository.create({
+        ...createFakePost(),
+        tags: new Set(['a', 'b']),
+      })
+
+      await repository.addToSet(post, 'tags', new Set(['c', 'd']))
+
+      const found = await repository.findOne({ hash: post.pk, range: post.id })
+      expect(found!.tags).toBeInstanceOf(Set)
+      expect(found!.tags).toEqual(new Set(['a', 'b', 'c', 'd']))
+    })
+
+    it('addToSet creates attribute when it does not exist', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      const { tags: _tags, ...attrsWithoutTags } = createFakePost()
+      const post = await repository.create(attrsWithoutTags as any)
+
+      await repository.addToSet(post, 'tags', new Set(['new-tag']))
+
+      const found = await repository.findOne({ hash: post.pk, range: post.id })
+      expect(found!.tags).toBeInstanceOf(Set)
+      expect(found!.tags).toEqual(new Set(['new-tag']))
+    })
+
+    it('deleteFromSet atomically removes elements from a Set', async () => {
+      const connection = await getSafeConnection('posts')
+      const repository = connection.getRepository(Post)
+
+      const post = await repository.create({
+        ...createFakePost(),
+        tags: new Set(['x', 'y', 'z']),
+      })
+
+      await repository.deleteFromSet(post, 'tags', new Set(['y']))
+
+      const found = await repository.findOne({ hash: post.pk, range: post.id })
+      expect(found!.tags).toBeInstanceOf(Set)
+      expect(found!.tags).toEqual(new Set(['x', 'z']))
     })
   })
 

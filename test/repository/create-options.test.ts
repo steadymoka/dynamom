@@ -137,6 +137,13 @@ describe('createOptions', () => {
           onUpdate: undefined,
           target: Post,
         },
+        {
+          property: 'tags',
+          name: 'tags',
+          onCreate: undefined,
+          onUpdate: undefined,
+          target: Post,
+        },
       ],
       generatedValues: [
         {

@@ -15,7 +15,7 @@ export class ExpressionBuilder {
     return placeholder
   }
 
-  addValue(val: string | number | boolean | null): string {
+  addValue(val: string | number | boolean | null | Set<string> | Set<number>): string {
     const placeholder = `:v${this.valueCounter++}`
     this.values[placeholder] = toDynamo(val)
     return placeholder

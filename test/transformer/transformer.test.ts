@@ -77,6 +77,18 @@ describe('toDynamo', () => {
       },
     })
   })
+
+  it('converts Set<string> to SS', () => {
+    expect(toDynamo(new Set(['a', 'b', 'c']))).toEqual({ SS: ['a', 'b', 'c'] })
+  })
+
+  it('converts Set<number> to NS', () => {
+    expect(toDynamo(new Set([1, 2, 3]))).toEqual({ NS: ['1', '2', '3'] })
+  })
+
+  it('converts empty Set to NULL', () => {
+    expect(toDynamo(new Set())).toEqual({ NULL: true })
+  })
 })
 
 
@@ -126,6 +138,18 @@ describe('fromDynamo', () => {
     expect(fromDynamo({ M: { a: { N: '1' }, b: { S: 'str' } } })).toEqual({ a: 1, b: 'str' })
   })
 
+  it('converts { SS } to Set<string>', () => {
+    const result = fromDynamo({ SS: ['x', 'y', 'z'] })
+    expect(result).toBeInstanceOf(Set)
+    expect(result).toEqual(new Set(['x', 'y', 'z']))
+  })
+
+  it('converts { NS } to Set<number>', () => {
+    const result = fromDynamo({ NS: ['1', '2', '3'] })
+    expect(result).toBeInstanceOf(Set)
+    expect(result).toEqual(new Set([1, 2, 3]))
+  })
+
   it('throws TypeError for unknown format', () => {
     expect(() => fromDynamo({} as any)).toThrow(TypeError)
   })
@@ -161,5 +185,19 @@ describe('toDynamoMap / fromDynamoMap', () => {
     }
     const result = fromDynamoMap(toDynamoMap(original))
     expect(result).toEqual(original)
+  })
+
+  it('roundtrip: Set<string> survives toDynamoMap → fromDynamoMap', () => {
+    const original = { tags: new Set(['a', 'b', 'c']) }
+    const result = fromDynamoMap(toDynamoMap(original))
+    expect(result.tags).toBeInstanceOf(Set)
+    expect(result.tags).toEqual(new Set(['a', 'b', 'c']))
+  })
+
+  it('roundtrip: Set<number> survives toDynamoMap → fromDynamoMap', () => {
+    const original = { scores: new Set([10, 20, 30]) }
+    const result = fromDynamoMap(toDynamoMap(original))
+    expect(result.scores).toBeInstanceOf(Set)
+    expect(result.scores).toEqual(new Set([10, 20, 30]))
   })
 })

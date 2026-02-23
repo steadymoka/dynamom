@@ -33,7 +33,8 @@ export interface ScanResult<P> {
 
 export interface UpdateItemOptions {
   remove?: string[]
-  add?: Record<string, number>
+  add?: Record<string, number | Set<string> | Set<number>>
+  deleteFromSet?: Record<string, Set<string> | Set<number>>
   condition?: FilterCondition
 }
 
