@@ -1,11 +1,17 @@
-import { DynamoDB } from 'aws-sdk'
+import {
+  DynamoDBClient,
+  ListTablesCommand,
+  DeleteTableCommand,
+  CreateTableCommand,
+} from '@aws-sdk/client-dynamodb'
 import { Connection } from '../lib/connection/connection'
 
 export async function getSafeConnection(tableName: string) {
-  const ddb = await global.createDynamoClient()
-  const tableNames = await ddb.listTables().promise().then(({ TableNames }) => TableNames ?? [])
+  const ddb: DynamoDBClient = await global.createDynamoClient()
+  const { TableNames } = await ddb.send(new ListTablesCommand({}))
+  const tableNames = TableNames ?? []
   if (tableNames.includes(tableName)) {
-    await ddb.deleteTable({ TableName: tableName }).promise()
+    await ddb.send(new DeleteTableCommand({ TableName: tableName }))
   }
   try {
     if (tableName == 'users') { await createUserTable(ddb) }
@@ -20,8 +26,8 @@ export async function getSafeConnection(tableName: string) {
   return new Connection(ddb)
 }
 
-async function createUserTable(ddb: DynamoDB) {
-  return ddb.createTable({
+async function createUserTable(ddb: DynamoDBClient) {
+  return ddb.send(new CreateTableCommand({
     TableName: 'users',
     KeySchema: [
       { AttributeName: 'user_id', KeyType: 'HASH' },
@@ -32,11 +38,11 @@ async function createUserTable(ddb: DynamoDB) {
       { AttributeName: 'username', AttributeType: 'S' },
     ],
     BillingMode: 'PAY_PER_REQUEST'
-  }).promise()
+  }))
 }
 
-async function createCategoryTable(ddb: DynamoDB) {
-  return ddb.createTable({
+async function createCategoryTable(ddb: DynamoDBClient) {
+  return ddb.send(new CreateTableCommand({
     TableName: 'categories',
     KeySchema: [
       { AttributeName: 'hashKey', KeyType: 'HASH' },
@@ -47,11 +53,11 @@ async function createCategoryTable(ddb: DynamoDB) {
       { AttributeName: 'id', AttributeType: 'S' },
     ],
     BillingMode: 'PAY_PER_REQUEST'
-  }).promise()
+  }))
 }
 
-async function createCommentTable(ddb: DynamoDB) {
-  return ddb.createTable({
+async function createCommentTable(ddb: DynamoDBClient) {
+  return ddb.send(new CreateTableCommand({
     TableName: 'comments',
     KeySchema: [
       { AttributeName: 'pk', KeyType: 'HASH' },
@@ -62,11 +68,11 @@ async function createCommentTable(ddb: DynamoDB) {
       { AttributeName: 'type', AttributeType: 'N' },
     ],
     BillingMode: 'PAY_PER_REQUEST'
-  }).promise()
+  }))
 }
 
-async function createPostTable(ddb: DynamoDB) {
-  return ddb.createTable({
+async function createPostTable(ddb: DynamoDBClient) {
+  return ddb.send(new CreateTableCommand({
     TableName: 'posts',
     KeySchema: [
       { AttributeName: 'pk', KeyType: 'HASH' },
@@ -88,11 +94,11 @@ async function createPostTable(ddb: DynamoDB) {
         Projection: { ProjectionType: 'ALL' }
       },
     ],
-  }).promise()
+  }))
 }
 
-async function createMovieTable(ddb: DynamoDB) {
-  return ddb.createTable({
+async function createMovieTable(ddb: DynamoDBClient) {
+  return ddb.send(new CreateTableCommand({
     TableName: 'movies',
     KeySchema: [
       { AttributeName: 'id', KeyType: 'HASH' },
@@ -123,7 +129,7 @@ async function createMovieTable(ddb: DynamoDB) {
         Projection: { ProjectionType: 'ALL' }
       },
     ],
-  }).promise()
+  }))
 }
 
 export function timeout(ms: number): Promise<void> {

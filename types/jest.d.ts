@@ -1,9 +1,10 @@
-import { DynamoDB } from 'aws-sdk'
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 
 declare global {
   namespace NodeJS {
     interface Global {
-      createDynamoClient(): Promise<DynamoDB>
+      createDynamoClient(): Promise<DynamoDBClient>
     }
   }
+  var createDynamoClient: () => Promise<DynamoDBClient>
 }

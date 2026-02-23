@@ -1,4 +1,4 @@
-const { DynamoDB } = require('aws-sdk')
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb')
 const { exec } = require('child_process')
 
 
@@ -8,7 +8,7 @@ function getDockerComposePort(service, port) {
     return Promise.resolve(cachedPort)
   }
   return new Promise((resolve, reject) => {
-    exec(`docker-compose port ${service} ${port}`, (error, stdout) => {
+    exec(`docker compose port ${service} ${port}`, (error, stdout) => {
       if (error) {
         reject(error)
         return
@@ -20,7 +20,7 @@ function getDockerComposePort(service, port) {
   })
 }
 
-global.createDynamoClient = async () => new DynamoDB({
+global.createDynamoClient = async () => new DynamoDBClient({
   endpoint: `http://localhost:${await getDockerComposePort('dynamodb', 8000)}`,
   credentials: {
     accessKeyId: 'accesskey',

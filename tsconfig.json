@@ -1,11 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es2015",
+    "target": "es2018",
     "module": "commonjs",
     "moduleResolution": "node",
     "lib": [
-      "es2017",
-      "esnext.asynciterable"
+      "es2018"
     ],
     "outDir": "lib",
     "declaration": true,
@@ -14,13 +13,14 @@
     "strict": true,
     "esModuleInterop": true,
     "noImplicitReturns": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "files": [
     "types/jest.d.ts"
   ],
   "include": [
     "src/**/*",
-    "test/**/*",
+    "test/**/*"
   ]
 }

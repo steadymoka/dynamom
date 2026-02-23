@@ -1,4 +1,4 @@
-import { Key } from 'aws-sdk/clients/dynamodb'
+import type { AttributeValue } from '@aws-sdk/client-dynamodb'
 
 import { RagneOption } from './range'
 
@@ -7,16 +7,16 @@ export interface QueryOptions<P> {
   hash: string | number
   rangeOption?: RagneOption
   limit?: number
-  after?: Key
+  after?: Record<string, AttributeValue>
   desc?: boolean
 }
 
 export interface QueryResult<P> {
   nodes: P[]
-  endCursor?: Key
+  endCursor?: Record<string, AttributeValue>
 }
 
-export interface DynamoNode<P extends {}> {
+export interface DynamoNode<P> {
   cursor: DynamoCursor
   node: P
 }

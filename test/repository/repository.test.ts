@@ -1,4 +1,5 @@
-import { Key } from 'aws-sdk/clients/dynamodb'
+import type { AttributeValue } from '@aws-sdk/client-dynamodb'
+import { GetItemCommand } from '@aws-sdk/client-dynamodb'
 
 import { BiggerThanRange, DefaultRange } from '../../lib'
 import { fromDynamoMap } from '../../lib/connection/transformer'
@@ -22,7 +23,7 @@ import { User } from '../stubs/user'
 const range = (start: number, end: number) => Array.from({ length: end - start }, (_, k) => k + start)
 const delay = (time: any) => new Promise(res => setTimeout(res, time))
 
-function encodeBase64(cursor: Key): string {
+function encodeBase64(cursor: Record<string, AttributeValue>): string {
   return Buffer.from(JSON.stringify(cursor)).toString('base64')
 }
 
@@ -44,13 +45,13 @@ describe('testsuite of repository/repository', () => {
     })
     expect(user).toBeInstanceOf(User)
 
-    const result = await client.getItem({
+    const result = await client.send(new GetItemCommand({
       TableName: 'users',
       Key: {
         user_id: { S: user.id },
         username: { S: user.username },
       },
-    }).promise()
+    }))
 
     expect({
       user_id: user.id,
@@ -80,12 +81,12 @@ describe('testsuite of repository/repository', () => {
     })
     expect(movie).toBeInstanceOf(Movie)
 
-    const result = await client.getItem({
+    const result = await client.send(new GetItemCommand({
       TableName: 'movies',
       Key: {
         id: { S: movie.id },
       },
-    }).promise()
+    }))
 
     expect({
       id: movie.id,
@@ -406,25 +407,27 @@ describe('testsuite of repository/repository', () => {
 
     // exists!
     expect(await repository.findOne({ hash: user.id, range: user.username })).toEqual(user)
-    expect(await client.getItem({
+    const getResult1 = await client.send(new GetItemCommand({
       TableName: 'users',
       Key: {
         user_id: { S: user.id },
         username: { S: user.username },
       },
-    }).promise()).not.toEqual(null)
+    }))
+    expect(getResult1.Item).not.toEqual(undefined)
 
     expect(await repository.remove(user)).toBeUndefined() // return void
 
     // not exists!
     expect(await repository.findOne({ hash: user.id, range: user.username })).toEqual(undefined)
-    expect(await client.getItem({
+    const getResult2 = await client.send(new GetItemCommand({
       TableName: 'users',
       Key: {
         user_id: { S: user.id },
         username: { S: user.username },
       },
-    }).promise()).toEqual({})
+    }))
+    expect(getResult2.Item).toEqual(undefined)
   })
 
 })

@@ -1,4 +1,4 @@
-import { Key } from 'aws-sdk/clients/dynamodb'
+import type { AttributeValue } from '@aws-sdk/client-dynamodb'
 import kuuid from 'kuuid'
 import { v4 as uuid } from 'uuid'
 
@@ -9,11 +9,11 @@ import { DynamoCursor } from '../interfaces/connection'
 import { DefaultRange } from '../interfaces/range'
 import { CountOptions, RepositoryOptions, RetrieveOptions, RetrieveResult } from '../interfaces/repository'
 
-function encodeBase64(cursor: Key): string {
+function encodeBase64(cursor: Record<string, AttributeValue>): string {
   return Buffer.from(JSON.stringify(cursor)).toString('base64')
 }
 
-function decodeBase64(buffer: string): Key {
+function decodeBase64(buffer: string): Record<string, AttributeValue> {
   return JSON.parse(Buffer.from(buffer, 'base64').toString('ascii'))
 }
 

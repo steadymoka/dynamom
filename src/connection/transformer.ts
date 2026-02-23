@@ -1,12 +1,12 @@
-import { DynamoDB } from 'aws-sdk'
+import type { AttributeValue } from '@aws-sdk/client-dynamodb'
 
-export function toDynamoMap(item: Record<string, any>): DynamoDB.AttributeMap {
+export function toDynamoMap(item: Record<string, any>): Record<string, AttributeValue> {
   return Object.entries(item).reduce((carry, [key, value]) => Object.assign(carry, {
     [key]: toDynamo(value),
   }), {})
 }
 
-export function toDynamo(item: any): DynamoDB.AttributeValue {
+export function toDynamo(item: any): AttributeValue {
   if (item === null || typeof item === 'undefined') {
     return { NULL: true }
   }
@@ -28,13 +28,13 @@ export function toDynamo(item: any): DynamoDB.AttributeValue {
 }
 
 
-export function fromDynamoMap(item: DynamoDB.AttributeMap): Record<string, any> {
+export function fromDynamoMap(item: Record<string, AttributeValue>): Record<string, any> {
   return Object.entries(item).reduce((carry, [key, value]) => Object.assign(carry, {
     [key]: fromDynamo(value),
   }), {})
 }
 
-export function fromDynamo(item: DynamoDB.AttributeValue): any {
+export function fromDynamo(item: AttributeValue): any {
   if (item.NULL) {
     return null
   }
